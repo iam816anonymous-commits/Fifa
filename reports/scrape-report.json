@@ -2,58 +2,47 @@
   "results": [
     {
       "providerName": "FIFA Official",
-      "matchesFound": 1,
-      "successRate": 100,
-      "missingFields": [],
-      "avgResponseTime": 1,
-      "healthScore": 100,
-      "matches": [
-        {
-          "id": "wc-1",
-          "homeTeam": "USA",
-          "awayTeam": "Mexico",
-          "homeScore": 0,
-          "awayScore": 0,
-          "status": "NS",
-          "matchTime": "2026-06-11T16:47:32.488Z",
-          "lastUpdated": "2026-06-11T16:47:32.488Z"
-        }
-      ]
-    },
-    {
-      "providerName": "ESPN",
-      "matchesFound": 1,
-      "successRate": 100,
-      "missingFields": [],
-      "avgResponseTime": 0,
-      "healthScore": 100,
-      "matches": [
-        {
-          "id": "wc-1",
-          "homeTeam": "USA",
-          "awayTeam": "Mexico",
-          "homeScore": 0,
-          "awayScore": 0,
-          "status": "NS",
-          "matchTime": "2026-06-11T16:47:32.489Z",
-          "lastUpdated": "2026-06-11T16:47:32.489Z"
-        }
-      ]
-    },
-    {
-      "providerName": "BBC Sport",
       "matchesFound": 0,
       "successRate": 0,
       "missingFields": [],
-      "avgResponseTime": 1,
+      "avgResponseTime": 112,
       "healthScore": 0,
       "matches": []
+    },
+    {
+      "providerName": "ESPN",
+      "matchesFound": 0,
+      "successRate": 0,
+      "missingFields": [],
+      "avgResponseTime": 78,
+      "healthScore": 0,
+      "matches": []
+    },
+    {
+      "providerName": "BBC Sport",
+      "matchesFound": 1,
+      "successRate": 100,
+      "missingFields": [],
+      "avgResponseTime": 146,
+      "healthScore": 100,
+      "matches": [
+        {
+          "id": "bbc-mexicomexicomexico-south_africasouth_africasouth_africa",
+          "homeTeam": "MexicoMexicoMexico",
+          "awayTeam": "South AfricaSouth AfricaSouth Africa",
+          "homeScore": 20,
+          "awayScore": 0,
+          "status": "LIVE",
+          "matchTime": "2026-06-11T17:22:44.161Z",
+          "lastUpdated": "2026-06-11T17:22:44.161Z"
+        }
+      ]
     }
   ],
   "comparison": {
     "missingMatches": 0,
     "conflicts": 0,
-    "duplicates": 1,
+    "duplicates": 0,
     "invalidDates": 0
   }
 }

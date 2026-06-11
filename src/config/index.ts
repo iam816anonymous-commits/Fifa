@@ -11,6 +11,8 @@ const envSchema = z.object({
   NEWS_API_KEY: z.string().optional(),
   FIFA_LEAGUE_ID: z.string().default('1'),
   FIFA_SEASON: z.string().default('2026'),
+  WHATSAPP_GROUP_JID: z.string().optional(),
+  OWNER_JID: z.string().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
 
@@ -18,6 +20,10 @@ const env = envSchema.parse(process.env);
 
 export const config = {
   port: parseInt(env.PORT, 10),
+  whatsapp: {
+    groupJid: process.env.WHATSAPP_GROUP_JID || env.WHATSAPP_GROUP_JID,
+    ownerJid: process.env.OWNER_JID || env.OWNER_JID,
+  },
   database: {
     url: env.DATABASE_URL,
   },

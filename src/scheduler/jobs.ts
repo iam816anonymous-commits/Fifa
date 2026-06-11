@@ -44,9 +44,14 @@ export function setupJobs() {
     const db = await getDb();
     const matches = await db.all("SELECT * FROM matches WHERE date(match_time) = date('now')");
     if (matches.length > 0) {
-      const users = await db.all('SELECT id FROM users WHERE is_subscribed = 1');
       const msg = `📅 *Today's WC Fixtures* 📅\n\n` + matches.map(m => `${m.home_team} vs ${m.away_team} (${new Date(m.match_time).toLocaleTimeString()})`).join('\n');
-      await messageQueue.enqueueBatch(users.map(u => u.id), msg);
+
+      // 1. Post to Group
+      if (config.whatsapp.groupJid) {
+          await messageQueue.enqueue(config.whatsapp.groupJid, msg);
+      }
+
+      // 2. We no longer broadcast to all users directly (Group-first pivot)
     }
   });
 }

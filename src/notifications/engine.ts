@@ -1,7 +1,8 @@
 import { Match } from '../types';
 import { getDb } from '../database/db';
-import crypto from 'crypto';
 import { messageQueue } from '../queue/messageQueue';
+import { config } from '../config';
+import { UserService } from '../utils/userService';
 
 export class NotificationEngine {
   async processMatchUpdate(newMatch: Match) {
@@ -58,14 +59,21 @@ export class NotificationEngine {
 
     if (await this.isAlreadySent(fingerprint)) return;
 
-    const db = await getDb();
-    const users = await db.all('SELECT id FROM users WHERE is_subscribed = 1');
-    const userIds = users.map(u => u.id);
-
-    if (userIds.length > 0) {
-      await messageQueue.enqueueBatch(userIds, `⚽ *WC Update* ⚽\n\n${message}`);
-      await this.markAsSent(fingerprint);
+    // 1. Always post to Group
+    if (config.whatsapp.groupJid) {
+      await messageQueue.enqueue(config.whatsapp.groupJid, `⚽ *WC Group Update* ⚽\n\n${message}`);
     }
+
+    // 2. Team-specific DM alerts
+    const homeFollowers = await UserService.getTeamFollowers(match.homeTeam);
+    const awayFollowers = await UserService.getTeamFollowers(match.awayTeam);
+    const followers = Array.from(new Set([...homeFollowers, ...awayFollowers]));
+
+    if (followers.length > 0) {
+      await messageQueue.enqueueBatch(followers, `⚽ *Team Alert* ⚽\n\n${message}`);
+    }
+
+    await this.markAsSent(fingerprint);
   }
 
   private async isAlreadySent(hash: string): Promise<boolean> {

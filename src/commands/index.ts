@@ -1,6 +1,7 @@
 import { UserService } from '../utils/userService';
 import { getMatchProvider } from '../providers';
 import { getDb } from '../database/db';
+import { config } from '../config';
 import { messageQueue } from '../queue/messageQueue';
 import { bot } from '../bot/whatsapp';
 import { ProviderManager } from '../providers/providerManager';
@@ -15,33 +16,37 @@ const providerManager = new ProviderManager([
 const ADMIN_NUMBERS = ['123456789@s.whatsapp.net']; // Replace with your admin JID
 
 export async function handleCommand(jid: string, text: string) {
-  const [command, ...args] = text.trim().toLowerCase().split(' ');
-  const isAdmin = ADMIN_NUMBERS.includes(jid);
+  if (!text.startsWith('!')) return; // Group protection
+
+  const [rawCommand, ...args] = text.trim().split(' ');
+  const command = rawCommand.toLowerCase().slice(1);
+  const isAdmin = jid === config.whatsapp.ownerJid;
 
   // Auto-create user
   await UserService.createUser(jid, jid.split('@')[0]);
 
   // Admin Commands
-  if (text.startsWith('/admin')) {
+  if (command === 'admin') {
     if (!isAdmin) return;
-    const adminCmd = args[0]; // because text.split(' ') is ["/admin", "stats"]
+    const adminCmd = args[0]?.toLowerCase();
     const adminArgs = args.slice(1);
 
     switch (adminCmd) {
       case 'stats': {
         const db = await getDb();
-        const users = await db.get('SELECT COUNT(*) as c FROM users WHERE is_subscribed = 1');
+        const users = await db.get('SELECT COUNT(*) as c FROM users');
+        const follows = await db.get('SELECT COUNT(*) as c FROM team_follows');
         const matches = await db.get('SELECT COUNT(*) as c FROM matches');
-        await messageQueue.enqueue(jid, `📊 *Admin Stats*\n\nSubscribers: ${users.c}\nMatches Tracked: ${matches.c}\nQueue Size: ${messageQueue.getQueueSize()}`);
+        await messageQueue.enqueue(jid, `📊 *Admin Stats*\n\nUsers: ${users.c}\nFollows: ${follows.c}\nMatches: ${matches.c}\nQueue: ${messageQueue.getQueueSize()}`);
         break;
       }
       case 'broadcast': {
-        const msg = adminArgs.join(' ');
+        const msg = args.slice(1).join(' ');
         if (!msg) return;
-        const db = await getDb();
-        const users = await db.all('SELECT id FROM users WHERE is_subscribed = 1');
-        await messageQueue.enqueueBatch(users.map(u => u.id), `📢 *Broadcast*\n\n${msg}`);
-        await messageQueue.enqueue(jid, `✅ Broadcasted to ${users.length} users.`);
+        if (config.whatsapp.groupJid) {
+            await messageQueue.enqueue(config.whatsapp.groupJid, `📢 *Admin Broadcast*\n\n${msg}`);
+            await messageQueue.enqueue(jid, `✅ Broadcasted to Group.`);
+        }
         break;
       }
       case 'providers': {
@@ -62,23 +67,14 @@ export async function handleCommand(jid: string, text: string) {
 
   // User Commands
   switch (command) {
-    case 'subscribe':
-      await UserService.subscribe(jid);
-      await messageQueue.enqueue(jid, '✅ Successfully subscribed to WC 2026 updates!');
-      break;
-    case 'unsubscribe':
-      await UserService.unsubscribe(jid);
-      await messageQueue.enqueue(jid, '❌ Unsubscribed from updates.');
-      break;
     case 'status': {
       const db = await getDb();
-      const user = await db.get('SELECT * FROM users WHERE id = ?', [jid]);
       const providers = await db.all('SELECT name, health_score FROM providers');
       const waStatus = bot.getSocket() ? 'Connected' : 'Disconnected';
 
       let msg = `*Bot Status*: Online\n\n`;
       msg += `WhatsApp: ${waStatus}\n`;
-      msg += `Subscription: ${user?.is_subscribed ? '✅ Active' : '❌ Inactive'}\n`;
+      msg += `Group: ${config.whatsapp.groupJid ? '✅ Active' : '❌ Not Set'}\n`;
       msg += `Queue Size: ${messageQueue.getQueueSize()}\n`;
       msg += `\n*Providers Health:*\n`;
       providers.forEach(p => msg += `${p.name}: ${p.health_score.toFixed(1)}%\n`);
@@ -87,7 +83,7 @@ export async function handleCommand(jid: string, text: string) {
       break;
     }
     case 'help': {
-      const help = `⚽ *WC 2026 Bot* 🏆\n\n*subscribe* - Join updates\n*unsubscribe* - Stop updates\n*status* - Bot health\n*today* - Today's matches\n*live* - Live scores\n*follow <team>* - Follow a team\n*unfollow <team>* - Unfollow a team\n*standings* - Group standings\n*news* - Latest news\n*help* - Show menu`;
+      const help = `⚽ *WC 2026 Bot* 🏆\n\n!today - Today's matches\n!live - Live scores\n!standings - Standings\n!news - News\n!follow <team> - Get DMs for a team\n!unfollow <team> - Stop team DMs\n!myteams - List followed teams\n!status - Bot health\n!help - Menu`;
       await messageQueue.enqueue(jid, help);
       break;
     }
@@ -115,16 +111,30 @@ export async function handleCommand(jid: string, text: string) {
     }
     case 'follow': {
       const team = args.join(' ');
-      if (!team) return messageQueue.enqueue(jid, 'Specify a team.');
+      if (!team) return messageQueue.enqueue(jid, 'Usage: !follow Argentina');
       await UserService.followTeam(jid, team);
-      await messageQueue.enqueue(jid, `✅ Following ${team}`);
+      await messageQueue.enqueue(jid, `✅ You are now following *${team}*.\nYou will receive private DM alerts for their matches.`);
       break;
     }
     case 'unfollow': {
       const team = args.join(' ');
-      if (!team) return messageQueue.enqueue(jid, 'Specify a team.');
+      if (!team) return messageQueue.enqueue(jid, 'Usage: !unfollow Argentina');
       await UserService.unfollowTeam(jid, team);
-      await messageQueue.enqueue(jid, `❌ Unfollowed ${team}`);
+      await messageQueue.enqueue(jid, `❌ Unfollowed *${team}*.`);
+      break;
+    }
+    case 'myteams': {
+      const teams = await UserService.getUserFollowedTeams(jid);
+      if (teams.length === 0) {
+        await messageQueue.enqueue(jid, 'You are not following any teams.');
+      } else {
+        await messageQueue.enqueue(jid, `⭐️ *Your Teams:*\n\n${teams.map(t => `- ${t}`).join('\n')}`);
+      }
+      break;
+    }
+    case 'unfollowall': {
+      await UserService.unfollowAll(jid);
+      await messageQueue.enqueue(jid, '❌ Unfollowed all teams.');
       break;
     }
     case 'standings': {

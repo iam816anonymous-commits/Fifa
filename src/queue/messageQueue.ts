@@ -21,14 +21,19 @@ class MessageQueue {
 
   async enqueue(jid: string, text: string) {
     this.queue.push({ jid, text, retries: 0 });
-    if (!this.processing) this.processQueue();
+    if (!this.processing) {
+        // Use setImmediate to ensure async processing doesn't block caller
+        setImmediate(() => this.processQueue());
+    }
   }
 
   async enqueueBatch(jids: string[], text: string) {
     for (const jid of jids) {
       this.queue.push({ jid, text, retries: 0 });
     }
-    if (!this.processing) this.processQueue();
+    if (!this.processing) {
+        setImmediate(() => this.processQueue());
+    }
   }
 
   private async processQueue() {

@@ -44,7 +44,7 @@ async function start() {
   await bot.connect();
   bot.onMessage(async (msg) => {
     const jid = msg.key.remoteJid;
-    const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text;
+    const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || msg.message?.buttonsResponseMessage?.selectedButtonId || msg.message?.listResponseMessage?.singleSelectReply?.selectedRowId;
     if (jid && text) {
       await handleCommand(jid, text);
     }

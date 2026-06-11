@@ -1,8 +1,16 @@
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   phone_number TEXT UNIQUE NOT NULL,
-  is_subscribed INTEGER DEFAULT 1,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS team_follows (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  team_name TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  UNIQUE(user_id, team_name)
 );
 
 CREATE TABLE IF NOT EXISTS matches (
