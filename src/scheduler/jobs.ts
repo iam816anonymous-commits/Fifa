@@ -18,38 +18,41 @@ const matchService = new MatchService(sportsProvider);
 const newsService = new NewsService(newsProvider);
 
 export function setupJobs() {
-  // Every 5 minutes: Check live scores and sync matches
+  // Every 5 minutes: Check live matches
   cron.schedule('*/5 * * * *', async () => {
-    logger.info('Running 5-minute job: Syncing matches and checking live scores');
-    await matchService.syncMatches();
-    // Logic for notifying subscribed users about live score changes could go here
-  });
-
-  // Every 15 minutes: Check breaking news
-  cron.schedule('*/15 * * * *', async () => {
-    logger.info('Running 15-minute job: Syncing news');
-    await newsService.syncNews();
-  });
-
-  // Every day at 8 AM: Send today's matches
-  cron.schedule('0 8 * * *', async () => {
-    logger.info('Running daily 8 AM job: Sending today\'s matches');
-    const matches = await matchService.getTodayMatches();
-    if (matches.length > 0) {
-      const users = await UserService.getSubscribedUsers();
-      const msg = `⚽ *Today's Matches:*\n\n` + matches.map(m => `${m.homeTeam} vs ${m.awayTeam} (${m.matchTime.toLocaleTimeString()})`).join('\n');
-      for (const user of users) {
-        await messageQueue.enqueue(user.id, msg);
-      }
+    logger.info('Running 5-minute job: Checking live matches');
+    try {
+      await matchService.syncMatches();
+    } catch (error) {
+      logger.error('Error in 5-minute job:', error);
     }
   });
 
-  // Every Monday: Send weekly fixtures (simplified here as just a reminder or list)
-  cron.schedule('0 9 * * 1', async () => {
-    logger.info('Running weekly Monday job: Sending weekly fixtures');
-    const users = await UserService.getSubscribedUsers();
-    for (const user of users) {
-      await messageQueue.enqueue(user.id, '📅 Happy Monday! Use the *schedule* command to see this week\'s fixtures.');
+  // Every 15 minutes: Check news
+  cron.schedule('*/15 * * * *', async () => {
+    logger.info('Running 15-minute job: Checking news');
+    try {
+      await newsService.syncNews();
+      // Optionally notify users of new breaking news here
+    } catch (error) {
+      logger.error('Error in 15-minute job:', error);
+    }
+  });
+
+  // Every day at 8 AM: Send today's fixtures
+  cron.schedule('0 8 * * *', async () => {
+    logger.info('Running daily 8 AM job: Sending fixtures');
+    try {
+      const matches = await matchService.getTodayMatches();
+      if (matches.length > 0) {
+        const users = await UserService.getSubscribedUsers();
+        const userIds = users.map(u => u.id);
+        const msg = `⚽ *Today's World Cup Fixtures:*\n\n` +
+                    matches.map(m => `${m.homeTeam} vs ${m.awayTeam} (${m.matchTime.toLocaleTimeString()})`).join('\n');
+        await messageQueue.enqueueBatch(userIds, msg);
+      }
+    } catch (error) {
+      logger.error('Error in daily job:', error);
     }
   });
 }

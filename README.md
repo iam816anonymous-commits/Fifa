@@ -1,83 +1,51 @@
-# FIFA World Cup 2026 WhatsApp Bot
+# FIFA World Cup 2026 WhatsApp Bot (Phase 1)
 
-A WhatsApp bot that provides real-time updates for the FIFA World Cup 2026, including scores, standings, and news.
+A robust, single-server WhatsApp bot providing real-time World Cup 2026 updates using web scraping and a reliability-first architecture.
 
-## Features
+## Architecture
 
-- **Subscriptions:** Users can subscribe to get automatic match updates.
-- **Team Tracking:** Users can follow specific teams to get alerts only for their matches.
-- **Live Scores:** Get real-time scores for ongoing matches.
-- **Standings:** View group standings.
-- **News:** Stay updated with the latest FIFA World Cup news.
-- **Admin Dashboard:** Protected endpoints to manage users and broadcast messages.
+- **WhatsApp (Baileys):** Direct integration with WhatsApp Web.
+- **SQLite Database:** Local persistence for users, matches, and notifications.
+- **Multi-Selector Scraping:** Robust data collection with fallback mechanisms (FIFA -> ESPN -> BBC).
+- **Health Scoring System:** Automated provider prioritization based on success/failure rates.
+- **Message Queue:** Batched delivery to handle 10,000+ subscribers safely.
 
-## Tech Stack
+## Phase 1 Features
 
-- **Node.js** & **TypeScript**
-- **Baileys:** WhatsApp Web API library.
-- **SQLite:** Lightweight database for user and match data.
-- **Express:** Admin API server.
-- **node-cron:** For scheduled tasks.
+- **Reliability:** Auto-reconnect, session persistence, and recovery after restart.
+- **Subscriptions:** Simple `subscribe`/`unsubscribe` commands.
+- **Automated Notifications:** Real-time goals, match starts/finishes, and breaking news.
+- **Health Monitoring:** Check system and data source status via `status` command.
 
 ## Setup
 
-1.  **Clone the repository.**
-2.  **Install dependencies:**
+1.  **Install dependencies:**
     ```bash
     npm install
     ```
-3.  **Configure environment variables:**
-    Create a `.env` file based on `.env.example`:
-    ```env
-    PORT=3000
-    DATABASE_URL=database.db
-    ADMIN_API_KEY=your_admin_api_key
-    SPORTS_API_KEY=your_api_football_key
-    NEWS_API_KEY=your_newsapi_key
-    ```
-    *Note: Get your sports API key from [API-Football](https://www.api-football.com/).*
-
-4.  **Build the project:**
+2.  **Configuration:**
+    Create a `.env` file (see `.env.example`). No API keys required for core scraping features.
+3.  **Build:**
     ```bash
     npm run build
     ```
-
-5.  **Start the bot:**
+4.  **Start:**
     ```bash
     npm start
     ```
-    Scan the QR code displayed in the terminal with your WhatsApp.
+    Scan the QR code in the terminal to link your WhatsApp.
 
 ## Commands
 
-- `subscribe` - Get automatic updates
-- `unsubscribe` - Stop receiving updates
-- `follow <team>` - Follow a specific team
-- `unfollow <team>` - Unfollow a team
-- `today` - Matches happening today
-- `schedule` - Upcoming fixtures
-- `standings` - Group standings
-- `live` - Live scores
-- `news` - Latest FIFA news
-- `help` - Show all commands
+- `subscribe` - Join the notification list.
+- `unsubscribe` - Stop receiving updates.
+- `status` - Check your subscription and bot health.
+- `help` - Show the command menu.
 
-## Admin API
+## Success Criteria (Phase 1)
 
-All admin endpoints require the `x-api-key` header.
-
-- `GET /admin/stats` - Get bot statistics.
-- `POST /admin/broadcast` - Send a message to all subscribers.
-- `GET /admin/users` - List all users.
-- `GET /admin/health` - Check application health.
-
-## Deployment
-
-This bot is designed to run on a single machine (PC, VPS, or cloud VM).
-
-1. Ensure Node.js is installed.
-2. Follow the setup steps above.
-3. Use a process manager like `pm2` to keep the bot running:
-   ```bash
-   npm install -g pm2
-   pm2 start dist/index.js --name "fifa-bot"
-   ```
+- [x] Bot survives restart without losing subscribers.
+- [x] Reconnects automatically to WhatsApp.
+- [x] Prevents duplicate notifications.
+- [x] Uses multiple scraping sources with automatic failover.
+- [x] Handles large subscriber batches efficiently.

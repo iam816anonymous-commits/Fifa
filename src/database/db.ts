@@ -22,6 +22,19 @@ CREATE TABLE IF NOT EXISTS users (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS matches (
+  id TEXT PRIMARY KEY,
+  home_team TEXT NOT NULL,
+  away_team TEXT NOT NULL,
+  match_time DATETIME NOT NULL,
+  status TEXT NOT NULL,
+  home_score INTEGER DEFAULT 0,
+  away_score INTEGER DEFAULT 0,
+  league_id INTEGER,
+  season INTEGER,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS subscriptions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id TEXT NOT NULL,
@@ -31,33 +44,31 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   UNIQUE(user_id, team_name)
 );
 
-CREATE TABLE IF NOT EXISTS matches (
-  id INTEGER PRIMARY KEY,
-  home_team TEXT NOT NULL,
-  away_team TEXT NOT NULL,
-  match_time DATETIME NOT NULL,
-  status TEXT NOT NULL,
-  home_score INTEGER,
-  away_score INTEGER,
-  league_id INTEGER,
-  season INTEGER
-);
-
 CREATE TABLE IF NOT EXISTS notifications (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id TEXT NOT NULL,
-  match_id INTEGER NOT NULL,
+  match_id TEXT NOT NULL,
   type TEXT NOT NULL,
+  payload TEXT,
   sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id),
-  FOREIGN KEY (match_id) REFERENCES matches(id)
+  UNIQUE(user_id, match_id, type, payload)
+);
+
+CREATE TABLE IF NOT EXISTS providers (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  health_score REAL DEFAULT 100.0,
+  success_count INTEGER DEFAULT 0,
+  failure_count INTEGER DEFAULT 0,
+  last_used DATETIME
 );
 
 CREATE TABLE IF NOT EXISTS news (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   title TEXT NOT NULL,
-  summary TEXT,
   url TEXT UNIQUE NOT NULL,
+  summary TEXT,
   published_at DATETIME,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

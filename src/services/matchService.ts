@@ -47,38 +47,45 @@ export class MatchService {
 
   private async notifyMatchUpdate(oldMatch: any, newMatch: Match) {
     let message = '';
+    let type = '';
+    let payload = '';
 
     if (oldMatch.status !== newMatch.status) {
       if (newMatch.status === 'LIVE' || newMatch.status === '1H') {
         message = `🎬 Match Started: *${newMatch.homeTeam} vs ${newMatch.awayTeam}*`;
+        type = 'match_start';
       } else if (newMatch.status === 'FT') {
         message = `🏁 Match Finished: *${newMatch.homeTeam} ${newMatch.homeScore} - ${newMatch.awayScore} ${newMatch.awayTeam}*`;
+        type = 'match_finish';
       }
     } else if (oldMatch.home_score !== newMatch.homeScore || oldMatch.away_score !== newMatch.awayScore) {
       message = `⚽ GOAL! *${newMatch.homeTeam} ${newMatch.homeScore} - ${newMatch.awayScore} ${newMatch.awayTeam}*`;
+      type = 'goal';
+      payload = `${newMatch.homeScore}-${newMatch.awayScore}`;
     }
 
     if (message) {
       const db = await getDb();
-      // Get all subscribed users
-      const generalSubs = await db.all('SELECT id FROM users WHERE is_subscribed = 1');
-      // Get team-specific subs
-      const teamSubs = await db.all(
-        'SELECT user_id FROM subscriptions WHERE team_name = ? OR team_name = ?',
-        [newMatch.homeTeam.toLowerCase(), newMatch.awayTeam.toLowerCase()]
+      const users = await db.all('SELECT id FROM users WHERE is_subscribed = 1');
+      const userIds = users.map(u => u.id);
+
+      // Filter users who already received this exact notification
+      const alreadyNotified = await db.all(
+        'SELECT user_id FROM notifications WHERE match_id = ? AND type = ? AND payload = ?',
+        [newMatch.id, type, payload]
       );
+      const notifiedSet = new Set(alreadyNotified.map(n => n.user_id));
+      const filteredUserIds = userIds.filter(id => !notifiedSet.has(id));
 
-      const userIds = Array.from(new Set([...generalSubs.map(u => u.id), ...teamSubs.map(u => u.user_id)]));
+      if (filteredUserIds.length === 0) return;
 
-      // Batch processing for 10k+ subscribers
-      await messageQueue.enqueueBatch(userIds, message);
+      await messageQueue.enqueueBatch(filteredUserIds, message);
 
-      // Track notification history in bulk with a transaction
       await db.run('BEGIN TRANSACTION');
       try {
-        const stmt = await db.prepare('INSERT INTO notifications (user_id, match_id, type) VALUES (?, ?, ?)');
-        for (const userId of userIds) {
-          await stmt.run([userId, newMatch.id, 'match_update']);
+        const stmt = await db.prepare('INSERT INTO notifications (user_id, match_id, type, payload) VALUES (?, ?, ?, ?)');
+        for (const userId of filteredUserIds) {
+          await stmt.run([userId, newMatch.id.toString(), type, payload]);
         }
         await stmt.finalize();
         await db.run('COMMIT');
