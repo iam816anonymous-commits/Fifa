@@ -73,8 +73,36 @@ describe('Hybrid Bot Architecture', () => {
     await notificationEngine.processMatchUpdate(mockMatch);
     await notificationEngine.processMatchUpdate(updatedMatch);
 
-    expect(messageQueue.enqueue).toHaveBeenCalledWith('group123@g.us', expect.stringContaining('Argentina scored'));
-    expect(messageQueue.enqueueBatch).toHaveBeenCalledWith([followerJid], expect.stringContaining('Argentina scored'));
+    expect(messageQueue.enqueue).toHaveBeenCalledWith('group123@g.us', expect.stringContaining('GOAL'));
+    expect(messageQueue.enqueueBatch).toHaveBeenCalledWith([followerJid], expect.stringContaining('GOAL'));
+  });
+
+  test('should detect comebacks and scorers', async () => {
+    const mockMatch: Match = {
+      id: 'test-match-comeback',
+      homeTeam: 'Argentina',
+      awayTeam: 'Brazil',
+      homeScore: 0,
+      awayScore: 1,
+      status: 'LIVE',
+      matchTime: new Date(),
+      lastUpdated: new Date(),
+      scorers: ['Neymar'],
+      source: 'TEST'
+    };
+
+    const updatedMatch: Match = {
+      ...mockMatch,
+      homeScore: 2,
+      scorers: ['Neymar', 'Messi', 'Alvarez']
+    };
+
+    await notificationEngine.processMatchUpdate(mockMatch);
+    jest.clearAllMocks();
+    await notificationEngine.processMatchUpdate(updatedMatch);
+
+    expect(messageQueue.enqueue).toHaveBeenCalledWith('group123@g.us', expect.stringContaining('AMAZING COMEBACK'));
+    expect(messageQueue.enqueue).toHaveBeenCalledWith('group123@g.us', expect.stringContaining('Scorer: Alvarez'));
   });
 
   test('should prevent duplicate notifications for same event', async () => {

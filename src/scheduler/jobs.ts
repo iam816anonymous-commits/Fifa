@@ -4,6 +4,7 @@ import { notificationEngine } from '../notifications/engine';
 import { ProviderManager } from '../providers/providerManager';
 import { FifaProvider, EspnProvider, BbcProvider } from '../providers/matchProviders';
 import { messageQueue } from '../queue/messageQueue';
+import { config } from '../config';
 import winston from 'winston';
 
 const logger = winston.createLogger({

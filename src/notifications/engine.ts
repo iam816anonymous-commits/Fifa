@@ -14,8 +14,8 @@ export class NotificationEngine {
 
     // Save new snapshot
     await db.run(
-      'INSERT INTO match_snapshots (match_id, home_score, away_score, status) VALUES (?, ?, ?, ?)',
-      [newMatch.id, newMatch.homeScore, newMatch.awayScore, newMatch.status]
+      'INSERT INTO match_snapshots (match_id, home_score, away_score, status, scorers, red_cards) VALUES (?, ?, ?, ?, ?, ?)',
+      [newMatch.id, newMatch.homeScore, newMatch.awayScore, newMatch.status, JSON.stringify(newMatch.scorers || []), JSON.stringify(newMatch.redCards || [])]
     );
 
     // Update main matches table
@@ -36,32 +36,53 @@ export class NotificationEngine {
   }
 
   private async detectEvents(old: any, newM: Match) {
-    // Goal detection
-    if (newM.homeScore > old.home_score) {
-      await this.sendNotification(newM, 'GOAL', `${newM.homeTeam} scored! (${newM.homeScore}-${newM.awayScore})`);
-    }
-    if (newM.awayScore > old.away_score) {
-      await this.sendNotification(newM, 'GOAL', `${newM.awayTeam} scored! (${newM.homeScore}-${newM.awayScore})`);
+    const oldScorers = JSON.parse(old.scorers || '[]');
+    const oldRedCards = JSON.parse(old.red_cards || '[]');
+
+    // 1. Goal & Scorer Detection
+    if (newM.homeScore > old.home_score || newM.awayScore > old.away_score) {
+        let scorerMsg = '';
+        if (newM.scorers && newM.scorers.length > oldScorers.length) {
+            scorerMsg = `\nScorer: ${newM.scorers[newM.scorers.length - 1]}`;
+        }
+
+        const isComeback = (old.home_score < old.away_score && newM.homeScore > newM.awayScore) ||
+                           (old.away_score < old.home_score && newM.awayScore > newM.homeScore);
+
+        const comebackMsg = isComeback ? '\n🔥 AMAZING COMEBACK!' : '';
+
+        await this.sendNotification(newM, 'GOAL', `⚽ GOAL!\n\n${newM.homeTeam} ${newM.homeScore}-${newM.awayScore} ${newM.awayTeam}${scorerMsg}${comebackMsg}`);
     }
 
-    // Status change detection
+    // 2. Red Card Detection
+    if (newM.redCards && newM.redCards.length > oldRedCards.length) {
+        const newPlayer = newM.redCards[newM.redCards.length - 1];
+        await this.sendNotification(newM, 'RED_CARD', `🟥 RED CARD!\n\nPlayer: ${newPlayer}\nMatch: ${newM.homeTeam} vs ${newM.awayTeam}`);
+    }
+
+    // 3. Status change detection
     if (old.status !== newM.status) {
-      if (newM.status === 'LIVE') {
-        await this.sendNotification(newM, 'START', `🎬 Match Started: ${newM.homeTeam} vs ${newM.awayTeam}`);
+      if (newM.status === 'LIVE' || newM.status === '1H') {
+        await this.sendNotification(newM, 'START', `🎬 Match Started: *${newM.homeTeam} vs ${newM.awayTeam}*`);
+      } else if (newM.status === 'HT') {
+        await this.sendNotification(newM, 'HT', `⏱ Half Time: ${newM.homeTeam} ${newM.homeScore}-${newM.awayScore} ${newM.awayTeam}`);
       } else if (newM.status === 'FT') {
-        await this.sendNotification(newM, 'FINISH', `🏁 Match Finished: ${newM.homeTeam} ${newM.homeScore} - ${newM.awayScore} ${newM.awayTeam}`);
+        await this.sendNotification(newM, 'FINISH', `🏁 Match Finished: *${newM.homeTeam} ${newM.homeScore} - ${newM.awayScore} ${newM.awayTeam}*`);
       }
     }
   }
 
   private async sendNotification(match: Match, type: string, message: string) {
-    const fingerprint = `${type}_${match.homeTeam}_${match.homeScore}_${match.awayTeam}_${match.awayScore}_${match.id}`.toUpperCase().replace(/\s+/g, '_');
+    const fingerprint = `${type}_${match.homeTeam}_${match.homeScore}_${match.awayTeam}_${match.awayScore}_${match.id}_${match.scorers?.length}_${match.redCards?.length}`.toUpperCase().replace(/\s+/g, '_');
 
     if (await this.isAlreadySent(fingerprint)) return;
 
+    const sourceSuffix = match.source ? `\n\n_Source: ${match.source}_` : '';
+    const finalMsg = `${message}${sourceSuffix}`;
+
     // 1. Always post to Group
     if (config.whatsapp.groupJid) {
-      await messageQueue.enqueue(config.whatsapp.groupJid, `⚽ *WC Group Update* ⚽\n\n${message}`);
+      await messageQueue.enqueue(config.whatsapp.groupJid, `⚽ *WC Group Update* ⚽\n\n${finalMsg}`);
     }
 
     // 2. Team-specific DM alerts

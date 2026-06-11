@@ -22,9 +22,9 @@ async function crashRecovery() {
   logger.info('Starting crash recovery...');
   const db = await getDb();
 
-  // Load subscribers count
-  const userCount = await db.get('SELECT COUNT(*) as count FROM users WHERE is_subscribed = 1');
-  logger.info(`Subscribers loaded: ${userCount.count}`);
+  // Load users count
+  const userCount = await db.get('SELECT COUNT(*) as count FROM users');
+  logger.info(`Users loaded: ${userCount.count}`);
 
   // Load last match states
   const matchCount = await db.get('SELECT COUNT(*) as count FROM matches');

@@ -8,6 +8,9 @@ export interface Match {
   matchTime: Date;
   minute?: number;
   lastUpdated: Date;
+  scorers?: string[];
+  redCards?: string[];
+  source?: string;
 }
 
 export interface Standing {

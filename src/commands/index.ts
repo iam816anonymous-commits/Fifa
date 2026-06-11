@@ -13,7 +13,6 @@ const providerManager = new ProviderManager([
   new BbcProvider()
 ]);
 
-const ADMIN_NUMBERS = ['123456789@s.whatsapp.net']; // Replace with your admin JID
 
 export async function handleCommand(jid: string, text: string) {
   if (!text.startsWith('!')) return; // Group protection

@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS match_snapshots (
   home_score INTEGER NOT NULL,
   away_score INTEGER NOT NULL,
   status TEXT NOT NULL,
+  scorers TEXT,
+  red_cards TEXT,
   snapshot_time DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (match_id) REFERENCES matches(id)
 );

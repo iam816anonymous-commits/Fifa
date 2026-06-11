@@ -1,4 +1,4 @@
-import { Match, MatchProvider } from '../types';
+import { Match, MatchProvider, Standing } from '../types';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
@@ -57,14 +57,24 @@ export class EspnProvider extends BaseScraper {
       const $ = cheerio.load(html);
       const matches: Match[] = [];
 
-      // Improved ESPN selector
       $('.Table__TR').each((i, el) => {
         const homeTeam = $(el).find('.Table__Team--home').text().trim() || $(el).find('.Table__Team').first().text().trim();
         const awayTeam = $(el).find('.Table__Team--away').text().trim() || $(el).find('.Table__Team').last().text().trim();
-        const scoreText = $(el).find('.Table__Score').text().trim(); // Example selector for score
+        const scoreText = $(el).find('.Table__Score').text().trim();
+        const timeText = $(el).find('.Table__Time').text().trim();
 
         if (homeTeam && awayTeam && homeTeam !== awayTeam) {
             const [h, a] = scoreText.split('-').map(s => parseInt(s, 10));
+
+            // Try to parse time, otherwise default to today
+            let matchTime = new Date();
+            if (timeText) {
+                const [hours, mins] = timeText.split(':');
+                if (hours && mins) {
+                    matchTime.setHours(parseInt(hours, 10), parseInt(mins, 10), 0, 0);
+                }
+            }
+
             matches.push({
                 id: `espn-${homeTeam.replace(/\s+/g, '_')}-${awayTeam.replace(/\s+/g, '_')}`.toLowerCase(),
                 homeTeam,
@@ -72,13 +82,41 @@ export class EspnProvider extends BaseScraper {
                 homeScore: isNaN(h) ? 0 : h,
                 awayScore: isNaN(a) ? 0 : a,
                 status: scoreText ? 'LIVE' : 'NS',
-                matchTime: new Date(),
-                lastUpdated: new Date()
+                matchTime,
+                lastUpdated: new Date(),
+                source: 'ESPN',
+                scorers: [],
+                redCards: []
             });
         }
       });
 
       return matches;
+    } catch (error) {
+      return [];
+    }
+  }
+
+  async getStandings(): Promise<Standing[]> {
+    try {
+      const html = await this.fetch('https://www.espn.com/soccer/standings/_/league/fifa.world');
+      const $ = cheerio.load(html);
+      const standings: Standing[] = [];
+
+      $('.Table__TR').each((i, el) => {
+        const teamName = $(el).find('.team-names').text().trim();
+        const cols = $(el).find('.Table__TD');
+        if (teamName && cols.length >= 8) {
+            standings.push({
+                rank: i + 1,
+                teamName,
+                played: parseInt($(cols[0]).text(), 10),
+                points: parseInt($(cols[7]).text(), 10),
+                group: 'Group'
+            });
+        }
+      });
+      return standings;
     } catch (error) {
       return [];
     }
@@ -112,7 +150,10 @@ export class BbcProvider extends BaseScraper {
                 awayScore: isNaN(a) ? 0 : a,
                 status: score ? 'LIVE' : 'NS',
                 matchTime: new Date(),
-                lastUpdated: new Date()
+                lastUpdated: new Date(),
+                source: 'BBC Sport',
+                scorers: [],
+                redCards: []
             });
         }
       });
