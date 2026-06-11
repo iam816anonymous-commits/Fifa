@@ -68,15 +68,23 @@ export class MatchService {
         [newMatch.homeTeam.toLowerCase(), newMatch.awayTeam.toLowerCase()]
       );
 
-      const userIds = new Set([...generalSubs.map(u => u.id), ...teamSubs.map(u => u.user_id)]);
+      const userIds = Array.from(new Set([...generalSubs.map(u => u.id), ...teamSubs.map(u => u.user_id)]));
 
-      for (const userId of userIds) {
-        await messageQueue.enqueue(userId, message);
-        // Track notification history
-        await db.run(
-          'INSERT INTO notifications (user_id, match_id, type) VALUES (?, ?, ?)',
-          [userId, newMatch.id, 'match_update']
-        );
+      // Batch processing for 10k+ subscribers
+      await messageQueue.enqueueBatch(userIds, message);
+
+      // Track notification history in bulk with a transaction
+      await db.run('BEGIN TRANSACTION');
+      try {
+        const stmt = await db.prepare('INSERT INTO notifications (user_id, match_id, type) VALUES (?, ?, ?)');
+        for (const userId of userIds) {
+          await stmt.run([userId, newMatch.id, 'match_update']);
+        }
+        await stmt.finalize();
+        await db.run('COMMIT');
+      } catch (err) {
+        await db.run('ROLLBACK');
+        throw err;
       }
     }
   }

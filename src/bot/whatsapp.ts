@@ -41,13 +41,17 @@ export class WhatsAppBot {
       }
 
       if (connection === 'close') {
-        const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-        logger.info('Connection closed, reconnecting:', shouldReconnect);
+        const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
+        const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+
+        logger.info(`Connection closed (status: ${statusCode}), reconnecting: ${shouldReconnect}`);
+
         if (shouldReconnect) {
-          this.connect();
+          // Automatic recovery after restart/disconnect
+          setTimeout(() => this.connect(), 5000);
         }
       } else if (connection === 'open') {
-        logger.info('WhatsApp connection opened');
+        logger.info('WhatsApp connection opened successfully');
       }
     });
 

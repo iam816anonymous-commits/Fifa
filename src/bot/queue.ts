@@ -17,11 +17,23 @@ class MessageQueue {
   private queue: QueuedMessage[] = [];
   private processing = false;
   private readonly maxRetries = 3;
-  private readonly delayBetweenMessages = 2000; // 2 seconds
+  private readonly delayBetweenMessages = 1000; // 1 second for 10k subscribers
+  private readonly batchSize = 50;
 
   async enqueue(jid: string, text: string) {
     this.queue.push({ jid, text, retries: 0 });
-    this.processQueue();
+    if (!this.processing) {
+      this.processQueue();
+    }
+  }
+
+  async enqueueBatch(jids: string[], text: string) {
+    for (const jid of jids) {
+      this.queue.push({ jid, text, retries: 0 });
+    }
+    if (!this.processing) {
+      this.processQueue();
+    }
   }
 
   private async processQueue() {

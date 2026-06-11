@@ -3,6 +3,7 @@ import { MatchService } from '../services/matchService';
 import { NewsService } from '../services/newsService';
 import { getSportsProvider, getNewsProvider } from '../providers';
 import { messageQueue } from '../bot/queue';
+import { config } from '../config';
 
 const sportsProvider = getSportsProvider();
 const newsProvider = getNewsProvider();
