@@ -1,6 +1,6 @@
 import { handleCommand } from '../src/commands';
 import { initDb, getDb } from '../src/database/db';
-import { messageQueue } from '../src/bot/queue';
+import { messageQueue } from '../src/queue/messageQueue';
 
 // Mock everything that imports Baileys
 jest.mock('../src/bot/whatsapp', () => ({
@@ -12,10 +12,11 @@ jest.mock('../src/bot/whatsapp', () => ({
   }
 }));
 
-jest.mock('../src/bot/queue', () => ({
+jest.mock('../src/queue/messageQueue', () => ({
   messageQueue: {
     enqueue: jest.fn(),
-    enqueueBatch: jest.fn()
+    enqueueBatch: jest.fn(),
+    getQueueSize: jest.fn().mockReturnValue(0)
   }
 }));
 
@@ -29,8 +30,10 @@ describe('Bot Commands', () => {
   afterEach(async () => {
     const db = await getDb();
     await db.run('DELETE FROM users');
-    await db.run('DELETE FROM notifications');
+    await db.run('DELETE FROM notification_hashes');
     await db.run('DELETE FROM providers');
+    await db.run('DELETE FROM matches');
+    await db.run('DELETE FROM match_snapshots');
     (messageQueue.enqueue as jest.Mock).mockClear();
     (messageQueue.enqueueBatch as jest.Mock).mockClear();
   });
@@ -42,7 +45,7 @@ describe('Bot Commands', () => {
     const db = await getDb();
     const user = await db.get('SELECT * FROM users WHERE id = ?', [jid]);
     expect(user.is_subscribed).toBe(1);
-    expect(messageQueue.enqueue).toHaveBeenCalledWith(jid, expect.stringContaining('successfully subscribed'));
+    expect(messageQueue.enqueue).toHaveBeenCalledWith(jid, expect.stringContaining('Successfully subscribed'));
   });
 
   test('status command should return active status', async () => {

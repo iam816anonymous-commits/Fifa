@@ -1,51 +1,49 @@
 # FIFA World Cup 2026 WhatsApp Bot (Phase 1)
 
-A robust, single-server WhatsApp bot providing real-time World Cup 2026 updates using web scraping and a reliability-first architecture.
+A reliability-first WhatsApp bot for WC 2026, designed for single-server deployment.
 
-## Architecture
+## Key Features
 
-- **WhatsApp (Baileys):** Direct integration with WhatsApp Web.
-- **SQLite Database:** Local persistence for users, matches, and notifications.
-- **Multi-Selector Scraping:** Robust data collection with fallback mechanisms (FIFA -> ESPN -> BBC).
-- **Health Scoring System:** Automated provider prioritization based on success/failure rates.
-- **Message Queue:** Batched delivery to handle 10,000+ subscribers safely.
+- **Reliable Scraping**: Multi-provider failover (FIFA -> ESPN -> BBC).
+- **Adaptive Data**: Strict validation and snapshot-based event detection.
+- **Fingerprinted Notifications**: Prevents duplicate alerts via notification hashing.
+- **Crash Recovery**: Automatically resumes scheduler and queue state on restart.
+- **Large Scale**: Batch processing for 10,000+ subscribers.
+- **Admin Dashboard**: Restricted WhatsApp commands for real-time monitoring.
 
-## Phase 1 Features
+## Folder Structure
 
-- **Reliability:** Auto-reconnect, session persistence, and recovery after restart.
-- **Subscriptions:** Simple `subscribe`/`unsubscribe` commands.
-- **Automated Notifications:** Real-time goals, match starts/finishes, and breaking news.
-- **Health Monitoring:** Check system and data source status via `status` command.
+```text
+src/
+├── bot/           # WhatsApp (Baileys) integration
+├── commands/      # User and Admin command handlers
+├── providers/     # Modular scrapers and failover logic
+├── scheduler/     # Periodic tasks (node-cron)
+├── queue/         # Rate-limited message delivery
+├── database/      # SQLite schema and persistence
+├── notifications/ # Event detection and hashing
+├── health/        # Provider health monitoring
+├── utils/         # Helper functions
+├── types/         # TypeScript interfaces
+```
 
 ## Setup
 
-1.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
-2.  **Configuration:**
-    Create a `.env` file (see `.env.example`). No API keys required for core scraping features.
-3.  **Build:**
-    ```bash
-    npm run build
-    ```
-4.  **Start:**
-    ```bash
-    npm start
-    ```
-    Scan the QR code in the terminal to link your WhatsApp.
+1. `npm install`
+2. `npm run build`
+3. `npm start`
 
-## Commands
+No Docker or paid APIs required.
 
-- `subscribe` - Join the notification list.
-- `unsubscribe` - Stop receiving updates.
-- `status` - Check your subscription and bot health.
-- `help` - Show the command menu.
+## Admin Commands
+Admin commands are restricted to configured phone numbers.
+- `/admin stats`
+- `/admin providers`
+- `/admin queue`
+- `/admin broadcast <message>`
 
-## Success Criteria (Phase 1)
-
-- [x] Bot survives restart without losing subscribers.
-- [x] Reconnects automatically to WhatsApp.
-- [x] Prevents duplicate notifications.
-- [x] Uses multiple scraping sources with automatic failover.
-- [x] Handles large subscriber batches efficiently.
+## Success Criteria
+- [x] Bot reconnects automatically.
+- [x] Zero duplicate notifications on restart.
+- [x] Automatic failover if a scraper source fails.
+- [x] Health-based provider prioritization.

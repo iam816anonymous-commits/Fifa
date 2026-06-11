@@ -1,4 +1,4 @@
-import { bot } from './whatsapp';
+import { bot } from '../bot/whatsapp';
 import winston from 'winston';
 
 const logger = winston.createLogger({
@@ -17,23 +17,18 @@ class MessageQueue {
   private queue: QueuedMessage[] = [];
   private processing = false;
   private readonly maxRetries = 3;
-  private readonly delayBetweenMessages = 1000; // 1 second for 10k subscribers
-  private readonly batchSize = 50;
+  private readonly delayBetweenMessages = 1000;
 
   async enqueue(jid: string, text: string) {
     this.queue.push({ jid, text, retries: 0 });
-    if (!this.processing) {
-      this.processQueue();
-    }
+    if (!this.processing) this.processQueue();
   }
 
   async enqueueBatch(jids: string[], text: string) {
     for (const jid of jids) {
       this.queue.push({ jid, text, retries: 0 });
     }
-    if (!this.processing) {
-      this.processQueue();
-    }
+    if (!this.processing) this.processQueue();
   }
 
   private async processQueue() {
@@ -51,14 +46,16 @@ class MessageQueue {
         logger.error(`Failed to send message to ${msg.jid}:`, error);
         if (msg.retries < this.maxRetries) {
           msg.retries++;
-          this.queue.push(msg); // Re-queue for retry
-        } else {
-          logger.error(`Max retries reached for ${msg.jid}`);
+          this.queue.push(msg);
         }
       }
     }
 
     this.processing = false;
+  }
+
+  getQueueSize() {
+    return this.queue.length;
   }
 }
 

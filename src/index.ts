@@ -4,7 +4,9 @@ import { initDb, getDb } from './database/db';
 import { bot } from './bot/whatsapp';
 import { handleCommand } from './commands';
 import { setupJobs } from './scheduler/jobs';
-import { messageQueue } from './bot/queue';
+import { notificationEngine } from './notifications/engine';
+import { ProviderManager } from './providers/providerManager';
+import { FifaProvider, EspnProvider, BbcProvider } from './providers/matchProviders';
 import winston from 'winston';
 
 const logger = winston.createLogger({
@@ -16,49 +18,28 @@ const logger = winston.createLogger({
 const app = express();
 app.use(express.json());
 
-// Admin Middleware
-const adminAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const apiKey = req.headers['x-api-key'];
-  if (apiKey === config.admin.apiKey) {
-    next();
-  } else {
-    res.status(401).json({ error: 'Unauthorized' });
-  }
-};
-
-// Admin Routes
-app.get('/admin/stats', adminAuth, async (req, res) => {
+async function crashRecovery() {
+  logger.info('Starting crash recovery...');
   const db = await getDb();
-  const userCount = await db.get('SELECT COUNT(*) as count FROM users');
-  const subCount = await db.get('SELECT COUNT(*) as count FROM users WHERE is_subscribed = 1');
-  res.json({ users: userCount.count, subscribers: subCount.count });
-});
 
-app.post('/admin/broadcast', adminAuth, async (req, res) => {
-  const { message } = req.body;
-  if (!message) return res.status(400).json({ error: 'Message is required' });
+  // Load subscribers count
+  const userCount = await db.get('SELECT COUNT(*) as count FROM users WHERE is_subscribed = 1');
+  logger.info(`Subscribers loaded: ${userCount.count}`);
 
-  const db = await getDb();
-  const users = await db.all('SELECT id FROM users WHERE is_subscribed = 1');
-  for (const user of users) {
-    await messageQueue.enqueue(user.id, `📢 *BROADCAST*\n\n${message}`);
-  }
-  res.json({ success: true, broadcastedTo: users.length });
-});
+  // Load last match states
+  const matchCount = await db.get('SELECT COUNT(*) as count FROM matches');
+  logger.info(`Last match states loaded: ${matchCount.count}`);
 
-app.get('/admin/users', adminAuth, async (req, res) => {
-  const db = await getDb();
-  const users = await db.all('SELECT * FROM users');
-  res.json(users);
-});
-
-app.get('/admin/health', (req, res) => {
-  res.json({ status: 'ok', uptime: process.uptime() });
-});
+  // Load notification hashes count
+  const hashCount = await db.get('SELECT COUNT(*) as count FROM notification_hashes');
+  logger.info(`Notification hashes loaded: ${hashCount.count}`);
+}
 
 async function start() {
   await initDb();
   logger.info('Database initialized');
+
+  await crashRecovery();
 
   await bot.connect();
   bot.onMessage(async (msg) => {

@@ -1,4 +1,4 @@
-import { SportsProvider, Match, Standing } from './types';
+import { Match, MatchProvider } from '../types';
 import { getDb } from '../database/db';
 import winston from 'winston';
 
@@ -8,75 +8,34 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 });
 
-export interface ScraperProvider extends SportsProvider {
-  id: string;
-  name: string;
-}
+export class ProviderManager {
+  private providers: MatchProvider[] = [];
 
-export class ProviderManager implements SportsProvider {
-  private providers: ScraperProvider[] = [];
-
-  constructor(providers: ScraperProvider[]) {
+  constructor(providers: MatchProvider[]) {
     this.providers = providers;
   }
 
-  async getMatches(leagueId: number, season: number): Promise<Match[]> {
-    // Sort providers by health score descending
+  async getMatches(): Promise<Match[]> {
     const sortedProviders = await this.getSortedProviders();
 
     for (const p of sortedProviders) {
       try {
-        const matches = await p.getMatches(leagueId, season);
+        const matches = await p.getMatches();
         if (matches && matches.length > 0) {
           await this.recordSuccess(p.id);
           return matches;
         }
       } catch (error) {
-        logger.error(`Provider ${p.name} failed:`, error);
+        logger.error(`Provider ${p.name} (${p.id}) failed:`, error);
         await this.recordFailure(p.id);
       }
     }
 
-    logger.warn('All providers failed for getMatches. Returning cached data.');
-    return []; // MatchService will handle fetching from DB if this is empty
+    logger.warn('All providers failed. Falling back to database cache.');
+    return this.getCachedMatches();
   }
 
-  async getLiveScores(leagueId: number): Promise<Match[]> {
-    const sortedProviders = await this.getSortedProviders();
-
-    for (const p of sortedProviders) {
-      try {
-        const scores = await p.getLiveScores(leagueId);
-        if (scores && scores.length > 0) {
-          await this.recordSuccess(p.id);
-          return scores;
-        }
-      } catch (error) {
-        logger.error(`Provider ${p.name} failed:`, error);
-        await this.recordFailure(p.id);
-      }
-    }
-    return [];
-  }
-
-  async getStandings(leagueId: number, season: number): Promise<Standing[]> {
-    const sortedProviders = await this.getSortedProviders();
-    for (const p of sortedProviders) {
-      try {
-        const standings = await p.getStandings(leagueId, season);
-        if (standings && standings.length > 0) {
-          await this.recordSuccess(p.id);
-          return standings;
-        }
-      } catch (error) {
-        logger.error(`Provider ${p.name} failed:`, error);
-        await this.recordFailure(p.id);
-      }
-    }
-    return [];
-  }
-
-  private async getSortedProviders(): Promise<ScraperProvider[]> {
+  private async getSortedProviders(): Promise<MatchProvider[]> {
     const db = await getDb();
     const rows = await db.all('SELECT id, health_score FROM providers');
     const healthMap = new Map(rows.map(r => [r.id, r.health_score]));
@@ -110,5 +69,20 @@ export class ProviderManager implements SportsProvider {
         health_score = MAX(0.0, health_score - 5.0),
         last_used = CURRENT_TIMESTAMP
     `, [id, this.providers.find(p => p.id === id)?.name || id]);
+  }
+
+  private async getCachedMatches(): Promise<Match[]> {
+    const db = await getDb();
+    const rows = await db.all('SELECT * FROM matches');
+    return rows.map(r => ({
+      id: r.id,
+      homeTeam: r.home_team,
+      awayTeam: r.away_team,
+      homeScore: r.home_score,
+      awayScore: r.away_score,
+      status: r.status,
+      matchTime: new Date(r.match_time),
+      lastUpdated: new Date(r.last_updated)
+    }));
   }
 }

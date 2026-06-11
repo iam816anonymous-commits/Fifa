@@ -39,10 +39,4 @@ export class UserService {
     const db = await getDb();
     return await db.all('SELECT * FROM users WHERE is_subscribed = 1');
   }
-
-  static async getUserFollowedTeams(userId: string) {
-    const db = await getDb();
-    const subs = await db.all('SELECT team_name FROM subscriptions WHERE user_id = ?', [userId]);
-    return subs.map(s => s.team_name);
-  }
 }

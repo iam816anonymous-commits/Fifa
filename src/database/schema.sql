@@ -9,33 +9,26 @@ CREATE TABLE IF NOT EXISTS matches (
   id TEXT PRIMARY KEY,
   home_team TEXT NOT NULL,
   away_team TEXT NOT NULL,
-  match_time DATETIME NOT NULL,
-  status TEXT NOT NULL,
   home_score INTEGER DEFAULT 0,
   away_score INTEGER DEFAULT 0,
-  league_id INTEGER,
-  season INTEGER,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  status TEXT NOT NULL,
+  match_time DATETIME NOT NULL,
+  last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS subscriptions (
+CREATE TABLE IF NOT EXISTS match_snapshots (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id TEXT NOT NULL,
-  team_name TEXT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id),
-  UNIQUE(user_id, team_name)
-);
-
-CREATE TABLE IF NOT EXISTS notifications (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id TEXT NOT NULL,
   match_id TEXT NOT NULL,
-  type TEXT NOT NULL,
-  payload TEXT,
-  sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id),
-  UNIQUE(user_id, match_id, type, payload)
+  home_score INTEGER NOT NULL,
+  away_score INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  snapshot_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (match_id) REFERENCES matches(id)
+);
+
+CREATE TABLE IF NOT EXISTS notification_hashes (
+  hash TEXT PRIMARY KEY,
+  sent_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS providers (
@@ -51,7 +44,6 @@ CREATE TABLE IF NOT EXISTS news (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   title TEXT NOT NULL,
   url TEXT UNIQUE NOT NULL,
-  summary TEXT,
   published_at DATETIME,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
