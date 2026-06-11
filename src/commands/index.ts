@@ -1,4 +1,5 @@
 import { UserService } from '../utils/userService';
+import { getMatchProvider } from '../providers';
 import { getDb } from '../database/db';
 import { messageQueue } from '../queue/messageQueue';
 import { bot } from '../bot/whatsapp';
@@ -86,7 +87,7 @@ export async function handleCommand(jid: string, text: string) {
       break;
     }
     case 'help': {
-      const help = `⚽ *WC 2026 Bot* 🏆\n\n*subscribe* - Join updates\n*unsubscribe* - Stop updates\n*status* - Bot health\n*today* - Today's matches\n*live* - Live scores\n*help* - Show menu`;
+      const help = `⚽ *WC 2026 Bot* 🏆\n\n*subscribe* - Join updates\n*unsubscribe* - Stop updates\n*status* - Bot health\n*today* - Today's matches\n*live* - Live scores\n*follow <team>* - Follow a team\n*unfollow <team>* - Unfollow a team\n*standings* - Group standings\n*news* - Latest news\n*help* - Show menu`;
       await messageQueue.enqueue(jid, help);
       break;
     }
@@ -109,6 +110,42 @@ export async function handleCommand(jid: string, text: string) {
       } else {
         const msg = matches.map(m => `🔴 ${m.home_team} ${m.home_score} - ${m.away_score} ${m.away_team}`).join('\n');
         await messageQueue.enqueue(jid, `*Live Scores:*\n${msg}`);
+      }
+      break;
+    }
+    case 'follow': {
+      const team = args.join(' ');
+      if (!team) return messageQueue.enqueue(jid, 'Specify a team.');
+      await UserService.followTeam(jid, team);
+      await messageQueue.enqueue(jid, `✅ Following ${team}`);
+      break;
+    }
+    case 'unfollow': {
+      const team = args.join(' ');
+      if (!team) return messageQueue.enqueue(jid, 'Specify a team.');
+      await UserService.unfollowTeam(jid, team);
+      await messageQueue.enqueue(jid, `❌ Unfollowed ${team}`);
+      break;
+    }
+    case 'standings': {
+      const provider = getMatchProvider();
+      const standings = await provider.getStandings();
+      if (!standings || standings.length === 0) {
+        await messageQueue.enqueue(jid, 'Standings unavailable.');
+      } else {
+        const msg = standings.map((s: any) => `${s.group}: ${s.rank}. ${s.teamName} (${s.points}pts)`).join('\n');
+        await messageQueue.enqueue(jid, `*Standings*\n${msg}`);
+      }
+      break;
+    }
+    case 'news': {
+      const db = await getDb();
+      const news = await db.all('SELECT * FROM news ORDER BY published_at DESC LIMIT 5');
+      if (news.length === 0) {
+        await messageQueue.enqueue(jid, 'No news available.');
+      } else {
+        const msg = news.map(n => `*${n.title}*\n${n.url}`).join('\n\n');
+        await messageQueue.enqueue(jid, `*Latest News*\n\n${msg}`);
       }
       break;
     }

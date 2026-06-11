@@ -1,4 +1,4 @@
-import { Match, MatchProvider } from '../types';
+import { Match, MatchProvider, Standing } from '../types';
 import { getDb } from '../database/db';
 import winston from 'winston';
 
@@ -69,6 +69,23 @@ export class ProviderManager {
         health_score = MAX(0.0, health_score - 5.0),
         last_used = CURRENT_TIMESTAMP
     `, [id, this.providers.find(p => p.id === id)?.name || id]);
+  }
+
+  async getStandings(): Promise<Standing[]> {
+    const sortedProviders = await this.getSortedProviders();
+    for (const p of sortedProviders) {
+      try {
+        const standings = await p.getStandings?.();
+        if (standings && standings.length > 0) {
+          await this.recordSuccess(p.id);
+          return standings;
+        }
+      } catch (error) {
+        logger.error(`Provider ${p.name} failed:`, error);
+        await this.recordFailure(p.id);
+      }
+    }
+    return [];
   }
 
   private async getCachedMatches(): Promise<Match[]> {
