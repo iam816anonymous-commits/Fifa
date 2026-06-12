@@ -52,6 +52,5 @@ This bot is designed to run inside a WhatsApp Group (or Channel) to minimize dir
 Run the verification suite to ensure all systems are green:
 ```bash
 npm test
-npx ts-node src/utils/verifyScrapers.ts
 ```
-Detailed reports are generated in the `reports/` folder.
+The architecture and hybrid alert model are verified via Jest. Scraper resilience is built into the `ProviderManager` and `StrategyScraper` base class.
