@@ -9,13 +9,35 @@ export class FifaProvider extends StrategyScraper {
 
   async getMatches(): Promise<Match[]> {
     try {
-      const html = await this.fetch(this.url);
+      let html = '';
+      let strategy = 'Selector-Chain';
+      try {
+        html = await this.fetch(this.url);
+      } catch {
+        html = await this.fetchWithPlaywright(this.url);
+        strategy = 'Playwright-Fallback';
+      }
       const $ = cheerio.load(html);
       let matches: Match[] = [];
 
       // 1. Attempt JSON-LD
       const jsonLd = this.extractJsonLd($ as any);
-      // Logic to map JSON-LD to Match[] would go here
+      const ldMatch = jsonLd.find(item => item['@type'] === 'SportsEvent');
+      if (ldMatch) {
+          matches.push({
+              id: `fifa-ld-${ldMatch.homeTeam?.name}-${ldMatch.awayTeam?.name}`.toLowerCase(),
+              homeTeam: ldMatch.homeTeam?.name,
+              awayTeam: ldMatch.awayTeam?.name,
+              homeScore: 0,
+              awayScore: 0,
+              status: 'NS',
+              matchTime: new Date(ldMatch.startDate),
+              lastUpdated: new Date(),
+              source: this.name,
+              strategyUsed: 'JSON-LD',
+              confidence: this.calculateConfidence(ldMatch, 'JSON-LD')
+          });
+      }
 
       // 2. Attempt Selector Chain (Resilient Fallbacks)
       const homeChain: SelectorChain = { primary: '.home-team', fallbacks: ['.team-name-home', '[data-testid="home-team"]'] };
@@ -35,8 +57,8 @@ export class FifaProvider extends StrategyScraper {
                   matchTime: new Date(),
                   lastUpdated: new Date(),
                   source: this.name,
-                  strategyUsed: 'Selector-Chain',
-                  confidence: this.calculateConfidence({}, 'Selector-Chain')
+                  strategyUsed: strategy,
+                  confidence: this.calculateConfidence({}, strategy)
               };
               if (this.validateMatch(match)) matches.push(match as Match);
           }
@@ -56,14 +78,35 @@ export class EspnProvider extends StrategyScraper {
 
   async getMatches(): Promise<Match[]> {
     try {
-      const html = await this.fetch(this.url);
+      let html = '';
+      let strategy = 'Table';
+      try {
+        html = await this.fetch(this.url);
+      } catch {
+        html = await this.fetchWithPlaywright(this.url);
+        strategy = 'Playwright-Fallback';
+      }
       const $ = cheerio.load(html);
       let matches: Match[] = [];
 
       // 1. Attempt Embedded JSON (ESPN often has window.__espn__)
       const espnData = this.extractEmbeddedJson(html, /window\.__espn__\s*=\s*({.*?});/);
-      if (espnData) {
-          // Map espnData to Match[]
+      if (espnData && espnData.content?.matches) {
+          espnData.content.matches.forEach((m: any) => {
+              matches.push({
+                  id: `espn-eb-${m.home.name}-${m.away.name}`.toLowerCase(),
+                  homeTeam: m.home.name,
+                  awayTeam: m.away.name,
+                  homeScore: m.home.score || 0,
+                  awayScore: m.away.score || 0,
+                  status: m.status || 'NS',
+                  matchTime: new Date(m.date),
+                  lastUpdated: new Date(),
+                  source: this.name,
+                  strategyUsed: 'Embedded-JSON',
+                  confidence: this.calculateConfidence(m, 'Embedded-JSON')
+              });
+          });
       }
 
       // 2. Attempt Tables
@@ -81,8 +124,8 @@ export class EspnProvider extends StrategyScraper {
                 matchTime: new Date(),
                 lastUpdated: new Date(),
                 source: this.name,
-                strategyUsed: 'Table',
-                confidence: this.calculateConfidence({}, 'Table')
+                strategyUsed: strategy,
+                confidence: this.calculateConfidence({}, strategy)
             });
         }
       });
@@ -101,7 +144,14 @@ export class BbcProvider extends StrategyScraper {
 
   async getMatches(): Promise<Match[]> {
     try {
-      const html = await this.fetch(this.url);
+      let html = '';
+      let strategy = 'DOM-Selector';
+      try {
+        html = await this.fetch(this.url);
+      } catch {
+        html = await this.fetchWithPlaywright(this.url);
+        strategy = 'Playwright-Fallback';
+      }
       const $ = cheerio.load(html);
       let matches: Match[] = [];
 
@@ -120,8 +170,8 @@ export class BbcProvider extends StrategyScraper {
                 matchTime: new Date(),
                 lastUpdated: new Date(),
                 source: this.name,
-                strategyUsed: 'DOM-Selector',
-                confidence: this.calculateConfidence({}, 'DOM-Selector')
+                strategyUsed: strategy,
+                confidence: this.calculateConfidence({}, strategy)
             });
         }
       });

@@ -45,7 +45,8 @@ class MessageQueue {
       if (!msg) continue;
 
       try {
-        await bot.sendMessage(msg.jid, msg.text);
+        console.log(`[Queue] Sending message to ${msg.jid}`);
+        await bot.sendMessage(msg.jid, { text: msg.text });
         await new Promise(resolve => setTimeout(resolve, this.delayBetweenMessages));
       } catch (error) {
         logger.error(`Failed to send message to ${msg.jid}:`, error);

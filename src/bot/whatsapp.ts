@@ -72,8 +72,8 @@ export class WhatsAppBot {
     this.messageHandler = handler;
   }
 
-  async sendMessage(jid: string, text: string) {
-    await this.sock.sendMessage(jid, { text });
+  async sendMessage(jid: string, content: any) {
+    await this.sock.sendMessage(jid, content);
   }
 
   getSocket() {

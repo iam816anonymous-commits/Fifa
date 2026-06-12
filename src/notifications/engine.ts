@@ -51,6 +51,7 @@ export class NotificationEngine {
 
         const comebackMsg = isComeback ? '\n🔥 AMAZING COMEBACK!' : '';
 
+        console.log(`⚽ Detected Score Change: ${newM.homeTeam} ${newM.homeScore}-${newM.awayScore} ${newM.awayTeam}`);
         await this.sendNotification(newM, 'GOAL', `⚽ GOAL!\n\n${newM.homeTeam} ${newM.homeScore}-${newM.awayScore} ${newM.awayTeam}${scorerMsg}${comebackMsg}`);
     }
 
@@ -73,9 +74,12 @@ export class NotificationEngine {
   }
 
   private async sendNotification(match: Match, type: string, message: string) {
-    const fingerprint = `${type}_${match.homeTeam}_${match.homeScore}_${match.awayTeam}_${match.awayScore}_${match.id}_${match.scorers?.length}_${match.redCards?.length}`.toUpperCase().replace(/\s+/g, '_');
+    const fingerprint = `${type}_${match.homeTeam}_${match.homeScore}_${match.awayTeam}_${match.awayScore}_${match.id}_${match.scorers?.length || 0}_${match.redCards?.length || 0}`.toUpperCase().replace(/\s+/g, '_');
 
-    if (await this.isAlreadySent(fingerprint)) return;
+    if (await this.isAlreadySent(fingerprint)) {
+        console.log(`[NotificationEngine] Duplicate event blocked: ${fingerprint}`);
+        return;
+    }
 
     const sourceSuffix = match.source ? `\n\n_Source: ${match.source}_` : '';
     const finalMsg = `${message}${sourceSuffix}`;

@@ -83,7 +83,7 @@ export class ProviderManager {
       try {
         const standings = await p.getStandings?.();
         if (standings && standings.length > 0) {
-          await this.recordSuccess(p.id);
+          await this.recordSuccess(p.id, 90); // Default confidence for standings
           return standings;
         }
       } catch (error) {
