@@ -1,8 +1,7 @@
 import cron from 'node-cron';
 import { getDb } from '../database/db';
 import { notificationEngine } from '../notifications/engine';
-import { ProviderManager } from '../providers/providerManager';
-import { FifaProvider, EspnProvider, BbcProvider } from '../providers/matchProviders';
+import { getMatchProvider } from '../providers';
 import { messageQueue } from '../queue/messageQueue';
 import { config } from '../config';
 import winston from 'winston';
@@ -13,11 +12,7 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 });
 
-const providerManager = new ProviderManager([
-  new FifaProvider(),
-  new EspnProvider(),
-  new BbcProvider()
-]);
+const providerManager = getMatchProvider();
 
 export function setupJobs() {
   // Every 5 minutes: Check live matches
@@ -36,7 +31,25 @@ export function setupJobs() {
   // Every 15 minutes: Check news
   cron.schedule('*/15 * * * *', async () => {
     logger.info('Syncing news...');
-    // Implementation for news syncing using a NewsProvider
+    try {
+      const newsItems = await providerManager.getNews();
+      const db = await getDb();
+      for (const item of newsItems) {
+        const fingerprint = `NEWS_${item.url}`.toUpperCase();
+        const exists = await db.get('SELECT hash FROM notification_hashes WHERE hash = ?', [fingerprint]);
+
+        if (!exists) {
+            await db.run('INSERT INTO news (title, url, published_at) VALUES (?, ?, ?)', [item.title, item.url, item.publishedAt.toISOString()]);
+            await db.run('INSERT INTO notification_hashes (hash) VALUES (?)', [fingerprint]);
+
+            if (config.whatsapp.groupJid) {
+                await messageQueue.enqueue(config.whatsapp.groupJid, `📰 *World Cup News* 📰\n\n${item.title}\n\nRead more: ${item.url}`);
+            }
+        }
+      }
+    } catch (error) {
+      logger.error('News sync failed:', error);
+    }
   });
 
   // Every day at 8 AM: Daily fixtures broadcast

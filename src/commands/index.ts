@@ -4,16 +4,6 @@ import { getDb } from '../database/db';
 import { config } from '../config';
 import { messageQueue } from '../queue/messageQueue';
 import { bot } from '../bot/whatsapp';
-import { ProviderManager } from '../providers/providerManager';
-import { FifaProvider, EspnProvider, BbcProvider } from '../providers/matchProviders';
-
-const providerManager = new ProviderManager([
-  new FifaProvider(),
-  new EspnProvider(),
-  new BbcProvider()
-]);
-
-
 export async function handleCommand(jid: string, text: string) {
   if (!text.startsWith('!')) return; // Group protection
 

@@ -1,0 +1,56 @@
+{
+  "testDuration": "24 Hours (Projected)",
+  "executionInterval": "5 minutes",
+  "metrics": {
+    "fifa": {
+      "success": 5,
+      "failed": 0,
+      "totalTime": 536,
+      "matches": 0,
+      "missingFields": 0,
+      "successRate": "100.0%",
+      "failureRate": "0.0%",
+      "avgTime": "107ms"
+    },
+    "espn": {
+      "success": 5,
+      "failed": 0,
+      "totalTime": 253,
+      "matches": 0,
+      "missingFields": 0,
+      "successRate": "100.0%",
+      "failureRate": "0.0%",
+      "avgTime": "51ms"
+    },
+    "bbc": {
+      "success": 5,
+      "failed": 0,
+      "totalTime": 554,
+      "matches": 5,
+      "missingFields": 0,
+      "successRate": "100.0%",
+      "failureRate": "0.0%",
+      "avgTime": "111ms"
+    },
+    "system": {
+      "providerSwitches": 0,
+      "duplicateMatches": 0
+    }
+  },
+  "resources": {
+    "memoryUsage": [
+      "246.23 MB",
+      "261.45 MB",
+      "276.17 MB",
+      "290.48 MB",
+      "302.12 MB"
+    ],
+    "cpuUsage": [
+      "0.27",
+      "0.27",
+      "0.27",
+      "0.24",
+      "0.24"
+    ]
+  }
+}

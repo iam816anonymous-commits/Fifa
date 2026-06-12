@@ -34,4 +34,5 @@ export interface MatchProvider {
   name: string;
   getMatches(): Promise<Match[]>;
   getStandings?(): Promise<Standing[]>;
+  getNews?(): Promise<NewsArticle[]>;
 }

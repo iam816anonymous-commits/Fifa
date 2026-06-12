@@ -1,4 +1,4 @@
-import { Match, MatchProvider, Standing } from '../types';
+import { Match, MatchProvider, Standing, NewsArticle } from '../types';
 import { getDb } from '../database/db';
 import winston from 'winston';
 
@@ -88,6 +88,23 @@ export class ProviderManager {
         }
       } catch (error) {
         logger.error(`Provider ${p.name} failed:`, error);
+        await this.recordFailure(p.id);
+      }
+    }
+    return [];
+  }
+
+  async getNews(): Promise<NewsArticle[]> {
+    const sortedProviders = await this.getSortedProviders();
+    for (const p of sortedProviders) {
+      try {
+        const news = await p.getNews?.();
+        if (news && news.length > 0) {
+          await this.recordSuccess(p.id, 95);
+          return news;
+        }
+      } catch (error) {
+        logger.error(`Provider ${p.name} news fetch failed:`, error);
         await this.recordFailure(p.id);
       }
     }

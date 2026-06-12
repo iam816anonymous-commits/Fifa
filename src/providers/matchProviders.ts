@@ -69,6 +69,24 @@ export class FifaProvider extends StrategyScraper {
   }
 
   async getStandings(): Promise<Standing[]> { return []; }
+
+  async getNews(): Promise<any[]> {
+    try {
+      const html = await this.fetch('https://www.fifa.com/en/news');
+      const $ = cheerio.load(html);
+      const news: any[] = [];
+      $('.news-card').each((i, el) => {
+        if (i < 5) {
+          news.push({
+            title: $(el).find('.title').text().trim(),
+            url: 'https://www.fifa.com' + $(el).find('a').attr('href'),
+            publishedAt: new Date()
+          });
+        }
+      });
+      return news;
+    } catch { return []; }
+  }
 }
 
 export class EspnProvider extends StrategyScraper {
