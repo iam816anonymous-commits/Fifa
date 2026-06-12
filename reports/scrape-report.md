@@ -1,25 +1,28 @@
-# Scraper Verification Report
+# Resilient Scraper Verification Report
 
 ## FIFA Official
-- Matches Found: 0
-- Success Rate: 0%
-- Missing Fields: None
-- Avg Response Time: 174ms
-- Health Score: 0%
+- **Matches Found:** 0
+- **Success Rate:** 0%
+- **Missing Fields:** None
+- **Avg Response Time:** 183ms
+- **Extraction Strategies:** N/A
+- **Avg Confidence:** 0.0%
 
 ## ESPN
-- Matches Found: 0
-- Success Rate: 0%
-- Missing Fields: None
-- Avg Response Time: 76ms
-- Health Score: 0%
+- **Matches Found:** 0
+- **Success Rate:** 0%
+- **Missing Fields:** None
+- **Avg Response Time:** 102ms
+- **Extraction Strategies:** N/A
+- **Avg Confidence:** 0.0%
 
 ## BBC Sport
-- Matches Found: 1
-- Success Rate: 100%
-- Missing Fields: None
-- Avg Response Time: 145ms
-- Health Score: 100%
+- **Matches Found:** 1
+- **Success Rate:** 100%
+- **Missing Fields:** None
+- **Avg Response Time:** 167ms
+- **Extraction Strategies:** DOM-Selector
+- **Avg Confidence:** 50.0%
 
 ## Cross-Provider Comparison
 - Duplicates Found: 0

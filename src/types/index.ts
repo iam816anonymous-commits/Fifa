@@ -11,6 +11,8 @@ export interface Match {
   scorers?: string[];
   redCards?: string[];
   source?: string;
+  confidence?: number;
+  strategyUsed?: string;
 }
 
 export interface Standing {

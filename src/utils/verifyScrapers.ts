@@ -84,14 +84,19 @@ async function verifyScrapers() {
   const reportPathJson = path.join('reports', 'scrape-report.json');
   fs.writeFileSync(reportPathJson, JSON.stringify({ results, comparison }, null, 2));
 
-  let mdReport = `# Scraper Verification Report\n\n`;
+  let mdReport = `# Resilient Scraper Verification Report\n\n`;
   results.forEach(r => {
     mdReport += `## ${r.providerName}\n`;
-    mdReport += `- Matches Found: ${r.matchesFound}\n`;
-    mdReport += `- Success Rate: ${r.successRate}%\n`;
-    mdReport += `- Missing Fields: ${r.missingFields.length > 0 ? r.missingFields.join(', ') : 'None'}\n`;
-    mdReport += `- Avg Response Time: ${r.avgResponseTime}ms\n`;
-    mdReport += `- Health Score: ${r.healthScore}%\n\n`;
+    mdReport += `- **Matches Found:** ${r.matchesFound}\n`;
+    mdReport += `- **Success Rate:** ${r.successRate}%\n`;
+    mdReport += `- **Missing Fields:** ${r.missingFields.length > 0 ? r.missingFields.join(', ') : 'None'}\n`;
+    mdReport += `- **Avg Response Time:** ${r.avgResponseTime}ms\n`;
+
+    const strategies = Array.from(new Set(r.matches.map(m => m.strategyUsed)));
+    mdReport += `- **Extraction Strategies:** ${strategies.join(', ') || 'N/A'}\n`;
+
+    const avgConfidence = r.matches.reduce((acc, m) => acc + (m.confidence || 0), 0) / (r.matches.length || 1);
+    mdReport += `- **Avg Confidence:** ${avgConfidence.toFixed(1)}%\n\n`;
   });
 
   mdReport += `## Cross-Provider Comparison\n`;

@@ -61,6 +61,8 @@ CREATE TABLE IF NOT EXISTS providers (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   health_score REAL DEFAULT 100.0,
+  avg_confidence REAL DEFAULT 0.0,
+  completeness_score REAL DEFAULT 0.0,
   success_count INTEGER DEFAULT 0,
   failure_count INTEGER DEFAULT 0,
   last_used DATETIME

@@ -5,7 +5,7 @@
       "matchesFound": 0,
       "successRate": 0,
       "missingFields": [],
-      "avgResponseTime": 174,
+      "avgResponseTime": 183,
       "healthScore": 0,
       "matches": []
     },
@@ -14,7 +14,7 @@
       "matchesFound": 0,
       "successRate": 0,
       "missingFields": [],
-      "avgResponseTime": 76,
+      "avgResponseTime": 102,
       "healthScore": 0,
       "matches": []
     },
@@ -23,21 +23,21 @@
       "matchesFound": 1,
       "successRate": 100,
       "missingFields": [],
-      "avgResponseTime": 145,
+      "avgResponseTime": 167,
       "healthScore": 100,
       "matches": [
         {
-          "id": "bbc-south_koreasouth_koreasouth_korea-czech_republicczech_republicczech_republic",
+          "id": "bbc-south koreasouth koreasouth korea-czech republicczech republicczech republic",
           "homeTeam": "South KoreaSouth KoreaSouth Korea",
           "awayTeam": "Czech RepublicCzech RepublicCzech Republic",
-          "homeScore": 21212120,
+          "homeScore": 0,
           "awayScore": 0,
-          "status": "LIVE",
-          "matchTime": "2026-06-12T03:44:33.096Z",
-          "lastUpdated": "2026-06-12T03:44:33.096Z",
+          "status": "NS",
+          "matchTime": "2026-06-12T04:20:15.495Z",
+          "lastUpdated": "2026-06-12T04:20:15.495Z",
           "source": "BBC Sport",
-          "scorers": [],
-          "redCards": []
+          "strategyUsed": "DOM-Selector",
+          "confidence": 50
         }
       ]
     }
