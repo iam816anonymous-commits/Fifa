@@ -1,4 +1,4 @@
-import { Match, Standing } from '../types';
+import { Match, Standing, NewsArticle } from '../types';
 import { StrategyScraper, SelectorChain } from './strategyScraper';
 import * as cheerio from 'cheerio';
 
@@ -70,11 +70,11 @@ export class FifaProvider extends StrategyScraper {
 
   async getStandings(): Promise<Standing[]> { return []; }
 
-  async getNews(): Promise<any[]> {
+  async getNews(): Promise<NewsArticle[]> {
     try {
       const html = await this.fetch('https://www.fifa.com/en/news');
       const $ = cheerio.load(html);
-      const news: any[] = [];
+      const news: NewsArticle[] = [];
       $('.news-card').each((i, el) => {
         if (i < 5) {
           news.push({
@@ -129,17 +129,30 @@ export class EspnProvider extends StrategyScraper {
 
       // 2. Attempt Tables
       $('tr.Table__TR').each((i, el) => {
-        const home = $(el).find('.Table__Team--home').text().trim() || $(el).find('.Table__Team').first().text().trim();
-        const away = $(el).find('.Table__Team--away').text().trim() || $(el).find('.Table__Team').last().text().trim();
-        if (home && away && home !== away) {
+        const homeTeam = $(el).find('.Table__Team--home').text().trim() || $(el).find('.Table__Team').first().text().trim();
+        const awayTeam = $(el).find('.Table__Team--away').text().trim() || $(el).find('.Table__Team').last().text().trim();
+        const scoreText = $(el).find('.Table__Score').text().trim();
+        const timeText = $(el).find('.Table__Time').text().trim();
+
+        if (homeTeam && awayTeam && homeTeam !== awayTeam) {
+            const [h, a] = scoreText.split('-').map(s => parseInt(s, 10));
+
+            let matchTime = new Date();
+            if (timeText) {
+                const [hours, mins] = timeText.split(':');
+                if (hours && mins) {
+                    matchTime.setHours(parseInt(hours, 10), parseInt(mins, 10), 0, 0);
+                }
+            }
+
             matches.push({
-                id: `espn-${home}-${away}`.toLowerCase(),
-                homeTeam: home,
-                awayTeam: away,
-                homeScore: 0,
-                awayScore: 0,
-                status: 'NS',
-                matchTime: new Date(),
+                id: `espn-${homeTeam.replace(/\s+/g, '_')}-${awayTeam.replace(/\s+/g, '_')}`.toLowerCase(),
+                homeTeam,
+                awayTeam,
+                homeScore: isNaN(h) ? 0 : h,
+                awayScore: isNaN(a) ? 0 : a,
+                status: scoreText ? 'LIVE' : 'NS',
+                matchTime,
                 lastUpdated: new Date(),
                 source: this.name,
                 strategyUsed: strategy,
@@ -152,7 +165,28 @@ export class EspnProvider extends StrategyScraper {
     } catch { return []; }
   }
 
-  async getStandings(): Promise<Standing[]> { return []; }
+  async getStandings(): Promise<Standing[]> {
+    try {
+      const html = await this.fetch('https://www.espn.com/soccer/standings/_/league/fifa.world');
+      const $ = cheerio.load(html);
+      const standings: Standing[] = [];
+
+      $('.Table__TR').each((i, el) => {
+        const teamName = $(el).find('.team-names').text().trim();
+        const cols = $(el).find('.Table__TD');
+        if (teamName && cols.length >= 8) {
+            standings.push({
+                rank: i + 1,
+                teamName,
+                played: parseInt($(cols[0]).text(), 10),
+                points: parseInt($(cols[7]).text(), 10),
+                group: 'Group'
+            });
+        }
+      });
+      return standings;
+    } catch { return []; }
+  }
 }
 
 export class BbcProvider extends StrategyScraper {
@@ -175,16 +209,19 @@ export class BbcProvider extends StrategyScraper {
 
       $('[class*="Fixture"]').each((i, el) => {
         const teams = $(el).find('[class*="TeamName"]');
+        const score = $(el).find('[class*="Score"]').text().trim();
         if (teams.length >= 2) {
             const home = $(teams[0]).text().trim();
             const away = $(teams[1]).text().trim();
+            const [h, a] = score.split('-').map(s => parseInt(s, 10));
+
             matches.push({
-                id: `bbc-${home}-${away}`.toLowerCase(),
+                id: `bbc-${home.replace(/\s+/g, '_')}-${away.replace(/\s+/g, '_')}`.toLowerCase(),
                 homeTeam: home,
                 awayTeam: away,
-                homeScore: 0,
-                awayScore: 0,
-                status: 'NS',
+                homeScore: isNaN(h) ? 0 : h,
+                awayScore: isNaN(a) ? 0 : a,
+                status: score ? 'LIVE' : 'NS',
                 matchTime: new Date(),
                 lastUpdated: new Date(),
                 source: this.name,

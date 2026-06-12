@@ -1,4 +1,3 @@
-import { MatchProvider } from '../types';
 import { FifaProvider, EspnProvider, BbcProvider } from './matchProviders';
 import { ProviderManager } from './providerManager';
 

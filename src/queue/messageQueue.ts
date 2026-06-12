@@ -1,4 +1,5 @@
 import { bot } from '../bot/whatsapp';
+import { QueueRepository } from '../repositories/QueueRepository';
 import winston from 'winston';
 
 const logger = winston.createLogger({
@@ -7,61 +8,58 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 });
 
-interface QueuedMessage {
-  jid: string;
-  text: string;
-  retries: number;
-}
-
 class MessageQueue {
-  private queue: QueuedMessage[] = [];
   private processing = false;
   private readonly maxRetries = 3;
   private readonly delayBetweenMessages = 1000;
 
   async enqueue(jid: string, text: string) {
-    this.queue.push({ jid, text, retries: 0 });
-    if (!this.processing) {
-        // Use setImmediate to ensure async processing doesn't block caller
-        setImmediate(() => this.processQueue());
-    }
+    await QueueRepository.enqueue(jid, text);
+    this.triggerProcess();
   }
 
   async enqueueBatch(jids: string[], text: string) {
     for (const jid of jids) {
-      this.queue.push({ jid, text, retries: 0 });
+      await QueueRepository.enqueue(jid, text);
     }
+    this.triggerProcess();
+  }
+
+  private triggerProcess() {
     if (!this.processing) {
         setImmediate(() => this.processQueue());
     }
   }
 
   private async processQueue() {
-    if (this.processing || this.queue.length === 0) return;
+    if (this.processing) return;
     this.processing = true;
 
-    while (this.queue.length > 0) {
-      const msg = this.queue.shift();
-      if (!msg) continue;
-
-      try {
-        console.log(`[Queue] Sending message to ${msg.jid}`);
-        await bot.sendMessage(msg.jid, { text: msg.text });
-        await new Promise(resolve => setTimeout(resolve, this.delayBetweenMessages));
-      } catch (error) {
-        logger.error(`Failed to send message to ${msg.jid}:`, error);
-        if (msg.retries < this.maxRetries) {
-          msg.retries++;
-          this.queue.push(msg);
+    try {
+        let msg = await QueueRepository.getNextMessage();
+        while (msg) {
+          try {
+            console.log(`[Queue] Sending message to ${msg.jid}`);
+            await bot.sendMessage(msg.jid, { text: msg.content });
+            await QueueRepository.dequeue(msg.id!);
+            await new Promise(resolve => setTimeout(resolve, this.delayBetweenMessages));
+          } catch (error) {
+            logger.error(`Failed to send message to ${msg.jid}:`, error);
+            if (msg.retries < this.maxRetries) {
+              await QueueRepository.incrementRetry(msg.id!);
+            } else {
+              await QueueRepository.dequeue(msg.id!); // Give up
+            }
+          }
+          msg = await QueueRepository.getNextMessage();
         }
-      }
+    } finally {
+        this.processing = false;
     }
-
-    this.processing = false;
   }
 
-  getQueueSize() {
-    return this.queue.length;
+  async getQueueSize() {
+    return await QueueRepository.countQueue();
   }
 }
 

@@ -1,9 +1,11 @@
 import cron from 'node-cron';
-import { getDb } from '../database/db';
 import { notificationEngine } from '../notifications/engine';
 import { getMatchProvider } from '../providers';
 import { messageQueue } from '../queue/messageQueue';
 import { config } from '../config';
+import { MatchRepository } from '../repositories/MatchRepository';
+import { NewsRepository } from '../repositories/NewsRepository';
+import { NotificationRepository } from '../repositories/NotificationRepository';
 import winston from 'winston';
 
 const logger = winston.createLogger({
@@ -33,14 +35,13 @@ export function setupJobs() {
     logger.info('Syncing news...');
     try {
       const newsItems = await providerManager.getNews();
-      const db = await getDb();
       for (const item of newsItems) {
         const fingerprint = `NEWS_${item.url}`.toUpperCase();
-        const exists = await db.get('SELECT hash FROM notification_hashes WHERE hash = ?', [fingerprint]);
+        const alreadySent = await NotificationRepository.isAlreadySent(fingerprint);
 
-        if (!exists) {
-            await db.run('INSERT INTO news (title, url, published_at) VALUES (?, ?, ?)', [item.title, item.url, item.publishedAt.toISOString()]);
-            await db.run('INSERT INTO notification_hashes (hash) VALUES (?)', [fingerprint]);
+        if (!alreadySent) {
+            await NewsRepository.saveNews(item);
+            await NotificationRepository.markAsSent(fingerprint);
 
             if (config.whatsapp.groupJid) {
                 await messageQueue.enqueue(config.whatsapp.groupJid, `📰 *World Cup News* 📰\n\n${item.title}\n\nRead more: ${item.url}`);
@@ -55,17 +56,15 @@ export function setupJobs() {
   // Every day at 8 AM: Daily fixtures broadcast
   cron.schedule('0 8 * * *', async () => {
     logger.info('Sending daily fixtures...');
-    const db = await getDb();
-    const matches = await db.all("SELECT * FROM matches WHERE date(match_time) = date('now')");
+    const today = new Date().toISOString().split('T')[0];
+    const matches = await MatchRepository.getMatchesByDate(today);
     if (matches.length > 0) {
-      const msg = `📅 *Today's WC Fixtures* 📅\n\n` + matches.map(m => `${m.home_team} vs ${m.away_team} (${new Date(m.match_time).toLocaleTimeString()})`).join('\n');
+      const msg = `📅 *Today's WC Fixtures* 📅\n\n` + matches.map(m => `${m.homeTeam} vs ${m.awayTeam} (${m.matchTime.toLocaleTimeString()})`).join('\n');
 
       // 1. Post to Group
       if (config.whatsapp.groupJid) {
           await messageQueue.enqueue(config.whatsapp.groupJid, msg);
       }
-
-      // 2. We no longer broadcast to all users directly (Group-first pivot)
     }
   });
 }

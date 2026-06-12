@@ -1,5 +1,6 @@
 import { Match, MatchProvider, Standing, NewsArticle } from '../types';
-import { getDb } from '../database/db';
+import { ProviderRepository } from '../repositories/ProviderRepository';
+import { MatchRepository } from '../repositories/MatchRepository';
 import winston from 'winston';
 
 const logger = winston.createLogger({
@@ -37,8 +38,7 @@ export class ProviderManager {
   }
 
   private async getSortedProviders(): Promise<MatchProvider[]> {
-    const db = await getDb();
-    const rows = await db.all('SELECT id, health_score, avg_confidence FROM providers');
+    const rows = await ProviderRepository.getProviderMetrics();
     const metricMap = new Map(rows.map(r => [r.id, { health: r.health_score, conf: r.avg_confidence }]));
 
     return [...this.providers].sort((a, b) => {
@@ -53,28 +53,13 @@ export class ProviderManager {
   }
 
   private async recordSuccess(id: string, confidence: number) {
-    const db = await getDb();
-    await db.run(`
-      INSERT INTO providers (id, name, success_count, health_score, avg_confidence, last_used)
-      VALUES (?, ?, 1, 100.0, ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(id) DO UPDATE SET
-        success_count = success_count + 1,
-        health_score = MIN(100.0, health_score + 1.0),
-        avg_confidence = (avg_confidence * 0.8) + (? * 0.2),
-        last_used = CURRENT_TIMESTAMP
-    `, [id, this.providers.find(p => p.id === id)?.name || id, confidence, confidence]);
+    const name = this.providers.find(p => p.id === id)?.name || id;
+    await ProviderRepository.recordSuccess(id, name, confidence);
   }
 
   private async recordFailure(id: string) {
-    const db = await getDb();
-    await db.run(`
-      INSERT INTO providers (id, name, failure_count, health_score, last_used)
-      VALUES (?, ?, 1, 95.0, CURRENT_TIMESTAMP)
-      ON CONFLICT(id) DO UPDATE SET
-        failure_count = failure_count + 1,
-        health_score = MAX(0.0, health_score - 5.0),
-        last_used = CURRENT_TIMESTAMP
-    `, [id, this.providers.find(p => p.id === id)?.name || id]);
+    const name = this.providers.find(p => p.id === id)?.name || id;
+    await ProviderRepository.recordFailure(id, name);
   }
 
   async getStandings(): Promise<Standing[]> {
@@ -112,17 +97,6 @@ export class ProviderManager {
   }
 
   private async getCachedMatches(): Promise<Match[]> {
-    const db = await getDb();
-    const rows = await db.all('SELECT * FROM matches');
-    return rows.map(r => ({
-      id: r.id,
-      homeTeam: r.home_team,
-      awayTeam: r.away_team,
-      homeScore: r.home_score,
-      awayScore: r.away_score,
-      status: r.status,
-      matchTime: new Date(r.match_time),
-      lastUpdated: new Date(r.last_updated)
-    }));
+    return await MatchRepository.getAllMatches();
   }
 }

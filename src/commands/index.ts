@@ -1,9 +1,11 @@
-import { UserService } from '../utils/userService';
 import { getMatchProvider } from '../providers';
-import { getDb } from '../database/db';
 import { config } from '../config';
 import { messageQueue } from '../queue/messageQueue';
 import { bot } from '../bot/whatsapp';
+import { UserRepository } from '../repositories/UserRepository';
+import { MatchRepository } from '../repositories/MatchRepository';
+import { NewsRepository } from '../repositories/NewsRepository';
+import { ProviderRepository } from '../repositories/ProviderRepository';
 export async function handleCommand(jid: string, text: string) {
   if (!text.startsWith('!')) return; // Group protection
 
@@ -12,21 +14,19 @@ export async function handleCommand(jid: string, text: string) {
   const isAdmin = jid === config.whatsapp.ownerJid;
 
   // Auto-create user
-  await UserService.createUser(jid, jid.split('@')[0]);
+  await UserRepository.createUser(jid, jid.split('@')[0]);
 
   // Admin Commands
   if (command === 'admin') {
     if (!isAdmin) return;
     const adminCmd = args[0]?.toLowerCase();
-    const adminArgs = args.slice(1);
 
     switch (adminCmd) {
       case 'stats': {
-        const db = await getDb();
-        const users = await db.get('SELECT COUNT(*) as c FROM users');
-        const follows = await db.get('SELECT COUNT(*) as c FROM team_follows');
-        const matches = await db.get('SELECT COUNT(*) as c FROM matches');
-        await messageQueue.enqueue(jid, `📊 *Admin Stats*\n\nUsers: ${users.c}\nFollows: ${follows.c}\nMatches: ${matches.c}\nQueue: ${messageQueue.getQueueSize()}`);
+        const users = await UserRepository.countUsers();
+        const follows = await UserRepository.countFollows();
+        const matches = await MatchRepository.countMatches();
+        await messageQueue.enqueue(jid, `📊 *Admin Stats*\n\nUsers: ${users}\nFollows: ${follows}\nMatches: ${matches}\nQueue: ${messageQueue.getQueueSize()}`);
         break;
       }
       case 'broadcast': {
@@ -39,8 +39,7 @@ export async function handleCommand(jid: string, text: string) {
         break;
       }
       case 'providers': {
-        const db = await getDb();
-        const providers = await db.all('SELECT * FROM providers');
+        const providers = await ProviderRepository.getAllProviders();
         let msg = `🔌 *Providers Health*\n\n`;
         providers.forEach(p => msg += `${p.name}: ${p.health_score.toFixed(1)}% (${p.success_count}S/${p.failure_count}F)\n`);
         await messageQueue.enqueue(jid, msg);
@@ -57,8 +56,7 @@ export async function handleCommand(jid: string, text: string) {
   // User Commands
   switch (command) {
     case 'status': {
-      const db = await getDb();
-      const providers = await db.all('SELECT name, health_score FROM providers');
+      const providers = await ProviderRepository.getAllProviders();
       const waStatus = bot.getSocket() ? 'Connected' : 'Disconnected';
 
       let msg = `*Bot Status*: Online\n\n`;
@@ -77,23 +75,22 @@ export async function handleCommand(jid: string, text: string) {
       break;
     }
     case 'today': {
-      const db = await getDb();
-      const matches = await db.all("SELECT * FROM matches WHERE date(match_time) = date('now')");
+      const today = new Date().toISOString().split('T')[0];
+      const matches = await MatchRepository.getMatchesByDate(today);
       if (matches.length === 0) {
         await messageQueue.enqueue(jid, 'No matches scheduled for today.');
       } else {
-        const msg = matches.map(m => `${m.home_team} vs ${m.away_team} (${m.status})`).join('\n');
+        const msg = matches.map(m => `${m.homeTeam} vs ${m.awayTeam} (${m.status})`).join('\n');
         await messageQueue.enqueue(jid, `*Today's Matches:*\n${msg}`);
       }
       break;
     }
     case 'live': {
-      const db = await getDb();
-      const matches = await db.all("SELECT * FROM matches WHERE status = 'LIVE'");
+      const matches = await MatchRepository.getLiveMatches();
       if (matches.length === 0) {
         await messageQueue.enqueue(jid, 'No live matches right now.');
       } else {
-        const msg = matches.map(m => `🔴 ${m.home_team} ${m.home_score} - ${m.away_score} ${m.away_team}`).join('\n');
+        const msg = matches.map(m => `🔴 ${m.homeTeam} ${m.homeScore} - ${m.awayScore} ${m.awayTeam}`).join('\n');
         await messageQueue.enqueue(jid, `*Live Scores:*\n${msg}`);
       }
       break;
@@ -101,19 +98,19 @@ export async function handleCommand(jid: string, text: string) {
     case 'follow': {
       const team = args.join(' ');
       if (!team) return messageQueue.enqueue(jid, 'Usage: !follow Argentina');
-      await UserService.followTeam(jid, team);
+      await UserRepository.followTeam(jid, team);
       await messageQueue.enqueue(jid, `✅ You are now following *${team}*.\nYou will receive private DM alerts for their matches.`);
       break;
     }
     case 'unfollow': {
       const team = args.join(' ');
       if (!team) return messageQueue.enqueue(jid, 'Usage: !unfollow Argentina');
-      await UserService.unfollowTeam(jid, team);
+      await UserRepository.unfollowTeam(jid, team);
       await messageQueue.enqueue(jid, `❌ Unfollowed *${team}*.`);
       break;
     }
     case 'myteams': {
-      const teams = await UserService.getUserFollowedTeams(jid);
+      const teams = await UserRepository.getUserFollowedTeams(jid);
       if (teams.length === 0) {
         await messageQueue.enqueue(jid, 'You are not following any teams.');
       } else {
@@ -122,7 +119,7 @@ export async function handleCommand(jid: string, text: string) {
       break;
     }
     case 'unfollowall': {
-      await UserService.unfollowAll(jid);
+      await UserRepository.unfollowAll(jid);
       await messageQueue.enqueue(jid, '❌ Unfollowed all teams.');
       break;
     }
@@ -138,8 +135,7 @@ export async function handleCommand(jid: string, text: string) {
       break;
     }
     case 'news': {
-      const db = await getDb();
-      const news = await db.all('SELECT * FROM news ORDER BY published_at DESC LIMIT 5');
+      const news = await NewsRepository.getLatestNews(5);
       if (news.length === 0) {
         await messageQueue.enqueue(jid, 'No news available.');
       } else {
