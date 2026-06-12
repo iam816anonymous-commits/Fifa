@@ -5,12 +5,12 @@
     "fifa": {
       "success": 5,
       "failed": 0,
-      "totalTime": 744,
+      "totalTime": 1026,
       "matches": 0,
       "missingFields": 0,
       "successRate": "100.0%",
       "failureRate": "0.0%",
-      "avgTime": "149ms"
+      "avgTime": "205ms"
     },
     "espn": {
       "success": 5,
@@ -25,12 +25,12 @@
     "bbc": {
       "success": 5,
       "failed": 0,
-      "totalTime": 487,
+      "totalTime": 538,
       "matches": 5,
       "missingFields": 0,
       "successRate": "100.0%",
       "failureRate": "0.0%",
-      "avgTime": "97ms"
+      "avgTime": "108ms"
     },
     "system": {
       "providerSwitches": 0,
@@ -39,18 +39,18 @@
   },
   "resources": {
     "memoryUsage": [
-      "177.47 MB",
-      "191.51 MB",
-      "205.33 MB",
-      "218.94 MB",
-      "232.40 MB"
+      "178.72 MB",
+      "193.84 MB",
+      "208.48 MB",
+      "222.77 MB",
+      "235.19 MB"
     ],
     "cpuUsage": [
-      "0.26",
-      "0.26",
-      "0.26",
-      "0.24",
-      "0.24"
+      "0.46",
+      "0.46",
+      "0.42",
+      "0.42",
+      "0.42"
     ]
   }
 }

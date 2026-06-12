@@ -5,7 +5,7 @@
       "matchesFound": 0,
       "successRate": 0,
       "missingFields": [],
-      "avgResponseTime": 112,
+      "avgResponseTime": 174,
       "healthScore": 0,
       "matches": []
     },
@@ -14,7 +14,7 @@
       "matchesFound": 0,
       "successRate": 0,
       "missingFields": [],
-      "avgResponseTime": 78,
+      "avgResponseTime": 76,
       "healthScore": 0,
       "matches": []
     },
@@ -23,18 +23,21 @@
       "matchesFound": 1,
       "successRate": 100,
       "missingFields": [],
-      "avgResponseTime": 146,
+      "avgResponseTime": 145,
       "healthScore": 100,
       "matches": [
         {
-          "id": "bbc-mexicomexicomexico-south_africasouth_africasouth_africa",
-          "homeTeam": "MexicoMexicoMexico",
-          "awayTeam": "South AfricaSouth AfricaSouth Africa",
-          "homeScore": 20,
+          "id": "bbc-south_koreasouth_koreasouth_korea-czech_republicczech_republicczech_republic",
+          "homeTeam": "South KoreaSouth KoreaSouth Korea",
+          "awayTeam": "Czech RepublicCzech RepublicCzech Republic",
+          "homeScore": 21212120,
           "awayScore": 0,
           "status": "LIVE",
-          "matchTime": "2026-06-11T17:22:44.161Z",
-          "lastUpdated": "2026-06-11T17:22:44.161Z"
+          "matchTime": "2026-06-12T03:44:33.096Z",
+          "lastUpdated": "2026-06-12T03:44:33.096Z",
+          "source": "BBC Sport",
+          "scorers": [],
+          "redCards": []
         }
       ]
     }

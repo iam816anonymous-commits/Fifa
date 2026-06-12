@@ -4,21 +4,21 @@
 - Matches Found: 0
 - Success Rate: 0%
 - Missing Fields: None
-- Avg Response Time: 112ms
+- Avg Response Time: 174ms
 - Health Score: 0%
 
 ## ESPN
 - Matches Found: 0
 - Success Rate: 0%
 - Missing Fields: None
-- Avg Response Time: 78ms
+- Avg Response Time: 76ms
 - Health Score: 0%
 
 ## BBC Sport
 - Matches Found: 1
 - Success Rate: 100%
 - Missing Fields: None
-- Avg Response Time: 146ms
+- Avg Response Time: 145ms
 - Health Score: 100%
 
 ## Cross-Provider Comparison
