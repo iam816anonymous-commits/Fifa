@@ -29,10 +29,18 @@ export interface NewsArticle {
   publishedAt: Date;
 }
 
+export interface VerificationResult {
+  matchId: string;
+  isVerified: boolean;
+  confidenceAdjustment: number;
+  correctedFields?: Partial<Match>;
+}
+
 export interface MatchProvider {
   id: string;
   name: string;
   getMatches(): Promise<Match[]>;
   getStandings?(): Promise<Standing[]>;
   getNews?(): Promise<NewsArticle[]>;
+  verifyMatch?(match: Match): Promise<VerificationResult | null>;
 }

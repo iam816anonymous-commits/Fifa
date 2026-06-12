@@ -23,6 +23,11 @@ export class ProviderManager {
       try {
         const matches = await p.getMatches();
         if (matches && matches.length > 0) {
+          // If not the first provider, this is a failover/verification
+          for (const match of matches) {
+              await this.verifyMatch(match);
+          }
+
           const avgConf = matches.reduce((acc, m) => acc + (m.confidence || 0), 0) / matches.length;
           await this.recordSuccess(p.id, avgConf);
           return matches;
@@ -60,6 +65,21 @@ export class ProviderManager {
   private async recordFailure(id: string) {
     const name = this.providers.find(p => p.id === id)?.name || id;
     await ProviderRepository.recordFailure(id, name);
+  }
+
+  private async verifyMatch(match: Match) {
+      const google = this.providers.find(p => p.id === 'google');
+      if (google && google.verifyMatch) {
+          try {
+              const verification = await google.verifyMatch(match);
+              if (verification && verification.isVerified) {
+                  match.confidence = (match.confidence || 70) + verification.confidenceAdjustment;
+                  if (verification.correctedFields) {
+                      Object.assign(match, verification.correctedFields);
+                  }
+              }
+          } catch {}
+      }
   }
 
   async getStandings(): Promise<Standing[]> {
